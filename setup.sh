@@ -80,10 +80,9 @@ function handleFlags()
 	if [ $# -eq 0 ]; then usage; fi
 
 	# read action options
-	for ARG in $@
-	do
-		if [ "${ARG}" == "install" ]; then ACTION="${ARG}"; break; fi
-		if [ "${ARG}" == "clean" ]; then ACTION="${ARG}"; break; fi
+	for ARG in $@; do
+		if [ "${ARG}" = "install" ]; then ACTION="${ARG}"; break; fi
+		if [ "${ARG}" = "clean" ]; then ACTION="${ARG}"; break; fi
 	done
 	if [ "$ACTION" = "" ]; then
 			logp fatal "No run command specified! (run $0 -h for usage)"
@@ -121,10 +120,14 @@ function checkEnvironment()
 
 function prepareEnvironment()
 {
-	apt update || logp fatal "Couldn't update packages"
+	U=0
 	for dep in "${DEPENDENCIES[@]}"
 	do
 		if ! command -v $dep &> /dev/null; then
+			if [ $U -eq 0 ]; then
+				apt update || logp fatal "Couldn't update packages"
+				U=1
+			fi
 			apt -y install $dep || logp fatal "Couldn't install dependency '$dep'!"
 		fi
 	done
