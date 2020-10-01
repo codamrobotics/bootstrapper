@@ -14,16 +14,16 @@ banner=false
 ## os variables
 case $kernel in
 	Darwin)
-		OS_UPDATE="brew update"
+		PKG_UPDATE="brew update"
 		;;
 	Linux)
 		flavour=$(cat /etc/os-release | grep ID_LIKE | cut -d= -f2)
 		case $flavour in
 			arch)
-				OS_UPDATE="sudo pacman -Sy"
+				PKG_UPDATE="sudo pacman -Sy"
 				;;
 			ubuntu)
-				OS_UPDATE="apt-get update"
+				PKG_UPDATE="apt-get update"
 				;;
 		esac
 		;;
@@ -204,10 +204,10 @@ function prepareEnvironment()
 	do
 		if ! command -v $dep &> /dev/null; then
 			if [ $U -eq 0 ]; then
-				$PAC_UPDATE || logp fatal "Couldn't update packages"
+				$PKG_UPDATE || logp fatal "Couldn't update packages"
 				U=1
 			fi
-			$PAC_INSTALL $dep || logp fatal "Couldn't install dependency '$dep'!"
+			$PKG_INSTALL $dep || logp fatal "Couldn't install dependency '$dep'!"
 		fi
 	done
 }
