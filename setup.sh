@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/zsh
 #
 # Configurations go into config.txt
 #
@@ -125,7 +125,7 @@ function prepareEnvironment()
 	for dep in "${DEPENDENCIES[@]}"
 	do
 		if ! command -v $dep &> /dev/null; then
-			apt -y $dep || logp fatal "Couldn't install dependency '$dep'!"
+			apt -y install $dep || logp fatal "Couldn't install dependency '$dep'!"
 		fi
 	done
 }
