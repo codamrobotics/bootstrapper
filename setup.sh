@@ -137,8 +137,8 @@ function main()
 {
 	banner
 	checkEnvironment
-	prepareEnvironment
 	handleFlags $@
+	prepareEnvironment
 	performActions $@
 }
 

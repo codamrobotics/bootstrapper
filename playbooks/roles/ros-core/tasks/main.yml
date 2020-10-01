@@ -1,4 +1,4 @@
 - name: Install core components of ROS
   package:
-    name: '{{ lookup('env', 'PACKAGES') }}'
+    name: "'{{ lookup('env', 'ROS_PACKAGES') }}'"
     state: present
