@@ -1,0 +1,14 @@
+#
+# All settings
+#
+
+PROJECT=Auro # Autonomous Robot is it not?
+
+ROS_RELEASE=melodic
+
+DEPENDENCIES=(ansible wget vim ranger)
+
+PACKAGES=ros-$ROS_RELEASE-ros-base
+
+OS_DISTRO=ubuntu
+OS_RELEASE=bionic
