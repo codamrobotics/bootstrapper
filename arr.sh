@@ -116,7 +116,13 @@ function banner()
 
 function usage()
 {
-	echo USAGE
+	echo "Usage:"
+cat<<EOF
+$callee bootstrap raspberry [RHOST]
+$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]
+$callee help	
+$callee clean
+EOF
 	exit 1
 }
 
@@ -139,7 +145,7 @@ function performActions()
 {
 	case $ACTION in
 		bootstrap)
-			if [ $# -lt 2 ]; then logp usage "$callee bootstrap [raspberry | ... ] [ARGS]"; fi
+			if [ $# -lt 2 ]; then logp usage "$callee bootstrap [raspberry | arduino-env ] [ARGS]"; fi
 			case $2 in
 				raspberry)
 					if [ ! $# -eq 3 ]; then logp usage "$callee bootstrap raspberry [RHOST]"; fi
@@ -149,6 +155,9 @@ function performActions()
 					banner
 					ansible-playbook -i $RHOST, $basedir/playbooks/system.yml || logp fatal "Failed to apply system rules!"
 					ansible-playbook -i $RHOST, $basedir/playbooks/ros.yml || logp fatal "Failed to apply ros rules!"
+				;;
+				arduino-env)
+					if [ ! $# -eq 3 ]; then logp usage "$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]"; fi
 				;;
 			esac
 		;;
