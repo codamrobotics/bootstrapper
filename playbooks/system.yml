@@ -1,4 +1,4 @@
-- hosts: localhost
+- hosts: all
   roles:
     - system
-    - ros-core
+    - ros_core

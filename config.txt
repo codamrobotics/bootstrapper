@@ -6,7 +6,7 @@ PROJECT=Auro # Autonomous Robot is it not?
 
 ROS_RELEASE=melodic
 
-DEPENDENCIES=(ansible wget vim ranger)
+DEPENDENCIES=(ansible dialog ssh)
 
 ROS_PACKAGES=ros-$ROS_RELEASE-ros-base
 
