@@ -15,15 +15,18 @@ banner=false
 case $kernel in
 	Darwin)
 		PKG_UPDATE="brew update"
+		PKG_INSTALL="brew install"
 		;;
 	Linux)
 		flavour=$(cat /etc/os-release | grep ID_LIKE | cut -d= -f2)
 		case $flavour in
 			arch)
-				PKG_UPDATE="sudo pacman -Sy"
+				PKG_UPDATE="yay -Sy"
+				PKG_INSTALL="yay --noconfirm -S"
 				;;
 			ubuntu)
-				PKG_UPDATE="apt-get update"
+				PKG_UPDATE="sudo apt-get update"
+				PKG_INSTALL="sudo apt-get install -y"
 				;;
 		esac
 		;;
@@ -161,6 +164,16 @@ function performActions()
 				;;
 				arduino-env)
 					if [ ! $# -eq 3 ]; then logp usage "$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]"; fi
+					if checkIsReachable "$(echo $3 | cut -d: -f1)"; then
+						which rsync || logp fatal "Cannot copy to/from host without rsync installed!"
+						rsync -Wav --progress $3 || logp fatal "Couldn't copy arduino env over"
+					elif [ -d $3 ] || mkdir -p $3; then
+						dir=$3
+						$PKG_INSTALL $ARDUINO_PACKAGES || logp fatal "Couldn't install Arduino packages!"
+						git clone git@github.com:$GIT_ORG/$GIT_LLC.git $dir || logp fatal "Couldn't clone Arduino-env!"
+					else
+						logp usage "$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]";
+					fi
 				;;
 			esac
 		;;
@@ -179,7 +192,7 @@ function checkIsIP()
 
 function checkIsReachable()
 {
-	ping -q -w 1 -c 1 $1 > /dev/null $2 > /dev/null
+	ping -q -w 1 -c 1 $1 >/dev/null 2>&1
 }
 
 #https://stackoverflow.com/a/932187/12394351
