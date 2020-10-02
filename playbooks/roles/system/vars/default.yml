@@ -1,0 +1,4 @@
+---
+create_user: "'{{ lookup('env', 'ADMIN_USER') }}'"
+copy_local_key: "{{ lookup('file', '/home/' + lookup('env','ADMIN_USER') + '/.ssh/id_rsa.pub') }}"
+sys_packages: "'{{ lookup('env', 'SYSTEM_PACKAGES') }}'"
