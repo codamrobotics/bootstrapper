@@ -2,8 +2,6 @@
 # All settings
 #
 
-PROJECT=Auro # Autonomous Robot is it not?
-
 ROS_RELEASE=melodic
 
 DEPENDENCIES=(ansible dialog ssh)

@@ -106,18 +106,21 @@ function banner()
 	source /etc/os-release
 	IP="$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' |head -n1)"
 	printf "\e[1m\e[33m+-------------------------------------------------------------------------------------------+\n"
-	printf "|\e[0m`tput bold` %-89s `tput sgr0`\e[1m\e[33m|\n" "$PROJECT -- $PRETTY_NAME -- ROS:$ROS_RELEASE"
+	printf "|\e[0m`tput bold` %-89s `tput sgr0`\e[1m\e[33m|\n" "$callee -- ROS:$ROS_RELEASE -- running on $PRETTY_NAME"
 	printf "\e[1m\e[33m| \e[0m%-89s\e[1m\e[33m |\n" "`date`"
 	#printf "\e[1m\e[33m| %-89s\e[1m\e[33m |\n" ""
-	printf "|\e[0m`tput bold` %-89s `tput sgr0`\e[1m\e[33m|\n" "$(whoami)@$HOST ($IP)"
+	printf "|\e[0m`tput bold` %-89s `tput sgr0`\e[1m\e[33m|\n" "$(whoami)@$HOST -- $IP"
+	if [ $# -gt 0 ]; then
+		printf "\e[1m\e[33m| %-89s\e[1m\e[33m |\n" "$1"
+	fi
 	printf "\e[1m\e[33m+-------------------------------------------------------------------------------------------+\n"
 	logp beginsection	
 }
 
 function usage()
 {
-	echo "Usage:"
-cat<<EOF
+	(logp usage "")
+	cat<<EOF
 $callee bootstrap raspberry [RHOST]
 $callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]
 $callee help	
@@ -152,7 +155,7 @@ function performActions()
 					export RHOST=$3
 
 					checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
-					banner
+					banner "bootstrapping raspberry at $RHOST"
 					ansible-playbook -i $RHOST, $basedir/playbooks/system.yml || logp fatal "Failed to apply system rules!"
 					ansible-playbook -i $RHOST, $basedir/playbooks/ros.yml || logp fatal "Failed to apply ros rules!"
 				;;
