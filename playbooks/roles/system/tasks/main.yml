@@ -21,7 +21,7 @@
 # User + Key Setup
 - name: Create a new regular user with sudo privileges
   user:
-    name: "{{ admin_user }}"
+    name: "'{{ lookup('env', 'ADMIN_USER') }}'"
     state: present
     groups: wheel
     append: true
@@ -30,9 +30,9 @@
 
 - name: Set authorized key for remote user
   authorized_key:
-    user: "{{ admin_user }}"
+    user: "'{{ lookup('env', 'ADMIN_USER') }}'"
     state: present
-    key: "{{ admin_user_key }}"
+    key: "'{{ lookup('env', 'ADMIN_SSHKEY') }}'"
 
 - name: Disable password authentication for root
   lineinfile:
@@ -46,7 +46,7 @@
   apt: update_cache=yes
 
 - name: Install required system packages
-  apt: name={{ sys_packages }} state=latest
+  apt: name='{{ lookup('env', 'SYSTEM_PACKAGES') }}' state=latest
 
 # UFW Setup
 - name: UFW - Allow SSH connections

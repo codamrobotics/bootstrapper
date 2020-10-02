@@ -14,19 +14,19 @@ banner=false
 ## os variables
 case $kernel in
 	Darwin)
-		PKG_UPDATE="brew update"
-		PKG_INSTALL="brew install"
+		alias PKG_UPDATE="brew update"
+		alias PKG_INSTALL="brew install"
 		;;
 	Linux)
 		flavour=$(cat /etc/os-release | grep ID_LIKE | cut -d= -f2)
 		case $flavour in
 			arch)
-				PKG_UPDATE="yay -Sy"
-				PKG_INSTALL="yay --noconfirm -S"
+				alias PKG_UPDATE="yay -Sy"
+				alias PKG_INSTALL="yay --noconfirm -S"
 				;;
 			ubuntu)
-				PKG_UPDATE="sudo apt-get update"
-				PKG_INSTALL="sudo apt-get install -y"
+				alias PKG_UPDATE="sudo apt-get update"
+				alias PKG_INSTALL="sudo apt-get install -y"
 				;;
 		esac
 		;;
@@ -106,16 +106,17 @@ function banner()
 {
 	banner=true
 	clear
-	source /etc/os-release
+	case $kernel in 
+		Darwin) PRETTY_NAME="Mac OSx" ;;
+		Linux) source /etc/os-release ;;
+	esac
 	IP="$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' |head -n1)"
 	printf "\e[1m\e[33m+-------------------------------------------------------------------------------------------+\n"
 	printf "|\e[0m`tput bold` %-89s `tput sgr0`\e[1m\e[33m|\n" "$callee -- ROS:$ROS_RELEASE -- running on $PRETTY_NAME"
+	printf "|\e[0m`tput bold` %-89s `tput sgr0`\e[1m\e[33m|\n" "$(whoami)@$HOST ($IP)"
 	printf "\e[1m\e[33m| \e[0m%-89s\e[1m\e[33m |\n" "`date`"
-	#printf "\e[1m\e[33m| %-89s\e[1m\e[33m |\n" ""
-	printf "|\e[0m`tput bold` %-89s `tput sgr0`\e[1m\e[33m|\n" "$(whoami)@$HOST -- $IP"
-	if [ $# -gt 0 ]; then
-		printf "\e[1m\e[33m| %-89s\e[1m\e[33m |\n" "$1"
-	fi
+	printf "\e[1m\e[33m| %-89s\e[1m\e[33m |\n" ""
+	if [ $# -gt 0 ]; then; printf "\e[1m\e[33m| %-89s\e[1m\e[33m |\n" "$1"; fi
 	printf "\e[1m\e[33m+-------------------------------------------------------------------------------------------+\n"
 	logp beginsection	
 }
@@ -159,7 +160,9 @@ function performActions()
 
 					checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
 					banner "bootstrapping raspberry at $RHOST"
-					ansible-playbook -i $RHOST, $basedir/playbooks/system.yml || logp fatal "Failed to apply system rules!"
+					#readUsers $basedir/userlist.txt|| logp fatal "Couldn't read users"
+					echo $ADMIN_SSH_KEY
+					ansible-playbook -i $RHOST, -e  "ansible_port=2222 ansible_ssh_user=$ANSIBLE_USER ansible_ssh_pass=$ANSIBLE_PASS"  $basedir/playbooks/system.yml || logp fatal "Failed to apply system rules!"
 					ansible-playbook -i $RHOST, $basedir/playbooks/ros.yml || logp fatal "Failed to apply ros rules!"
 				;;
 				arduino-env)
@@ -169,7 +172,7 @@ function performActions()
 						rsync -Wav --progress $3 || logp fatal "Couldn't copy arduino env over"
 					elif [ -d $3 ] || mkdir -p $3; then
 						dir=$3
-						$PKG_INSTALL $ARDUINO_PACKAGES || logp fatal "Couldn't install Arduino packages!"
+						PKG_INSTALL $ARDUINO_PACKAGES || logp fatal "Couldn't install Arduino packages!"
 						git clone git@github.com:$GIT_ORG/$GIT_LLC.git $dir || logp fatal "Couldn't clone Arduino-env!"
 					else
 						logp usage "$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]";
@@ -185,6 +188,28 @@ function performActions()
 	esac
 }
 
+#function readUsers()
+#{
+#	if [ ! $# -eq 1 ] || [ ! -f $1 ]; then; logp fatal "Can't read users from non-existing file '$1'"; fi
+#	export ADMIN_USER=admin
+#	export ADMIN_GROUP=$(cat $1 | grep admin | head -n1 | cut -d: -f 2)
+#	export ADMIN_SSHKEY=$(cat $1 | grep admin | head -n1 | cut -d: -f 3)
+#}
+
+#http://stackoverflow.com/a/18443300/441757
+function realpath() {
+  OURPWD=$PWD
+  cd "$(dirname "$1")"
+  LINK=$(readlink "$(basename "$1")")
+  while [ "$LINK" ]; do
+    cd "$(dirname "$LINK")"
+    LINK=$(readlink "$(basename "$1")")
+  done
+  REALPATH="$PWD/$(basename "$1")"
+  cd "$OURPWD"
+  echo "$REALPATH"
+}
+
 function checkIsIP()
 {
 	[[ $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
@@ -192,14 +217,29 @@ function checkIsIP()
 
 function checkIsReachable()
 {
-	ping -q -w 1 -c 1 $1 >/dev/null 2>&1
+	case $kernel in
+		Darwin)
+			ping -q -t 1 -c 1 $1 >/dev/null 2>&1
+		;;
+		Linux)
+			ping -q -w 1 -c 1 $1 >/dev/null 2>&1
+		;;
+	esac
 }
 
 #https://stackoverflow.com/a/932187/12394351
 function checkConnectivity()
 {
-	def_gateway=$(ip r | grep default | cut -d ' ' -f 3)
-	ping -q -w 1 -c 1 $def_gateway > /dev/null
+	case $kernel in
+		Darwin)
+			def_gateway=$(route get default | grep gateway | cut -d: -f2| sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+			ping -q -t 1 -c 1 $def_gateway > /dev/null
+		;;
+		Linux)
+			def_gateway=$(ip r | grep default | cut -d ' ' -f 3)
+			ping -q -w 1 -c 1 $def_gateway > /dev/null
+		;;
+	esac
 }
 
 function checkEnvironment()
@@ -220,10 +260,10 @@ function prepareEnvironment()
 	do
 		if ! command -v $dep &> /dev/null; then
 			if [ $U -eq 0 ]; then
-				$PKG_UPDATE || logp fatal "Couldn't update packages"
+				PKG_UPDATE || logp fatal "Couldn't update packages"
 				U=1
 			fi
-			$PKG_INSTALL $dep || logp fatal "Couldn't install dependency '$dep'!"
+			PKG_INSTALL $dep || logp fatal "Couldn't install dependency '$dep'!"
 		fi
 	done
 }

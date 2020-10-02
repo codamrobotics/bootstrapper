@@ -2,16 +2,22 @@
 # All settings
 #
 
-ROS_RELEASE=melodic
-
+# local dependencies
 DEPENDENCIES=(ansible dialog ssh)
 
-SYSTEM_PACKAGES="apt ufw"
+ROS_RELEASE=melodic
+
 ROS_PACKAGES="ros-$ROS_RELEASE-ros-base"
+SYSTEM_PACKAGES="apt ufw"
 ARDUINO_PACKAGES="arduino-mk avr-gcc"
 
 OS_DISTRO=ubuntu
 OS_RELEASE=bionic
+
+ANSIBLE_USER=ubuntu
+ANSIBLE_PASS=ubuntu
+
+ADMIN_USER=admin
 
 GIT_ORG=autonomousrobotshq
 GIT_LLC=low-level-controller

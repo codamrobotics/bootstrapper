@@ -1,7 +1,5 @@
 - hosts: all
   become: true
-  vars_files:
-    - vars/default.yml
   roles:
     - system
     - ros_core
