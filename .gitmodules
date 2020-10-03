@@ -1,0 +1,3 @@
+[submodule "tests/docker"]
+	path = tests/docker
+	url = git@github.com:s-t-a-n/docker-meta.git
