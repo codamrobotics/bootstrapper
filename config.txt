@@ -3,7 +3,7 @@
 #
 
 # local dependencies
-DEPENDENCIES=(ansible dialog ssh)
+DEPENDENCIES=(ansible dialog ssh ssh-copy-id sshpass)
 
 ROS_RELEASE=melodic
 

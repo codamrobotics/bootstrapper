@@ -68,6 +68,9 @@ function logp()
 			zsh -c "echo -e \"\e[32m\e[1mUsage: \e[0m$2\""
 			exit 0
 			;;
+		question)
+			zsh -c "echo -e -n \"\e[32m\e[1mUse your keyboard:  \e[0m$2 : \""
+			;;
 		warning)
 			zsh -c "echo -e \"\033[31m\e[1m* \e[0m$2\""
 			;;
@@ -79,14 +82,23 @@ function logp()
 			exit 1
 			;;
 		beginsection)
-			zsh -c "echo -e \"\e[1m\e[33m*********************************************************************************************\""
-			zsh -c "echo -e \"\e[1m\e[33m|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\e[0m\""
+				zsh -c "echo -e \"\e[1m\e[33m$(termFill '*')\e[0m\""
+				zsh -c "echo -e \"\e[1m\e[33m$(termFill '|')\e[0m\""
 			;;
 		endsection)
-			zsh -c "echo -e \"\e[1m\e[33m|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\""
-			zsh -c "echo -e \"\e[1m\e[33m*********************************************************************************************\e[0m\""
+				zsh -c "echo -e \"\e[1m\e[33m$(termFill '|')\e[0m\""
+				zsh -c "echo -e \"\e[1m\e[33m$(termFill '*')\e[0m\""
 			;;
 	esac
+}
+
+function termFill() { 
+		cols=$(tput cols)
+		if [ $# -gt 1 ]; then
+			while [[ $x -lt $cols ]] && [[ $x -lt $2 ]]; do printf "$1"; let x=$x+1; done;
+		else
+			while [[ $x -lt $cols ]]; do printf "$1"; let x=$x+1; done;
+		fi
 }
 
 function tmp_create()
@@ -97,9 +109,8 @@ function tmp_create()
 
 function tmp_delete()
 {
-	if [ -d $src_cpy ]; then
-		rm -r $src_cpy
-	fi
+	if [ -f $basedir/.tmp ]; then rm -f $basedir/.tmp; fi
+	if [ -d $src_cpy ]; then rm -r $src_cpy; fi
 }
 
 function banner()
@@ -110,26 +121,27 @@ function banner()
 		Darwin) PRETTY_NAME="Mac OSx" ;;
 		Linux) source /etc/os-release ;;
 	esac
-	IP="$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' |head -n1)"
-	printf "\e[1m\e[33m+-------------------------------------------------------------------------------------------+\n"
-	printf "|\e[0m`tput bold` %-89s `tput sgr0`\e[1m\e[33m|\n" "$callee -- ROS:$ROS_RELEASE -- running on $PRETTY_NAME"
-	printf "|\e[0m`tput bold` %-89s `tput sgr0`\e[1m\e[33m|\n" "$(whoami)@$HOST ($IP)"
-	printf "\e[1m\e[33m| \e[0m%-89s\e[1m\e[33m |\n" "`date`"
-	printf "\e[1m\e[33m| %-89s\e[1m\e[33m |\n" ""
-	if [ $# -gt 0 ]; then; printf "\e[1m\e[33m| %-89s\e[1m\e[33m |\n" "$1"; fi
-	printf "\e[1m\e[33m+-------------------------------------------------------------------------------------------+\n"
+	cols=$(tput cols)
+	date=$(date)
+	ip="$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' |head -n1)"
+	zsh -c "echo -e \"\e[1m\e[33m+$(termFill '-' $((cols - 2)))+\""
+	printf "|\e[0m`tput bold` %-$((cols - 4))s `tput sgr0`\e[1m\e[33m|\n" "$callee -- ROS:$ROS_RELEASE -- running on $PRETTY_NAME"
+	printf "|\e[0m`tput bold` %-$((cols - 4))s `tput sgr0`\e[1m\e[33m|\n" "$(whoami)@$HOST ($ip)"
+	#printf "\e[1m\e[33m| \e[0m%-$((cols - 4))s\e[1m\e[33m |\n" "`date`"
+	printf "\e[1m\e[33m| %-$((cols - 4))s\e[1m\e[33m |\n" ""
+	if [ $# -gt 0 ]; then; printf "\e[1m\e[33m| %-$((cols - $((4 + ${#date})) ))s%-5s\e[1m\e[33m |\n" "$1" "`date`"; fi
 	logp beginsection	
 }
 
 function usage()
 {
 	(logp usage "")
-	cat<<EOF
-$callee bootstrap raspberry [RHOST]
-$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]
-$callee help	
-$callee clean
-EOF
+	cat<<-EOF
+		$callee bootstrap raspberry [RHOST]
+		$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]
+		$callee help	
+		$callee clean
+	EOF
 	exit 1
 }
 
@@ -160,6 +172,9 @@ function performActions()
 
 					checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
 					banner "bootstrapping raspberry at $RHOST"
+					getUserInfo	|| logp fatal "Failed to get user info"
+					exit 0
+					prepareEnvironment || logp fatal "Couldn't prepare environment"
 					#readUsers $basedir/userlist.txt|| logp fatal "Couldn't read users"
 					echo $ADMIN_SSH_KEY
 					ansible-playbook -i $RHOST, -e  "ansible_port=2222 ansible_ssh_user=$ANSIBLE_USER ansible_ssh_pass=$ANSIBLE_PASS"  $basedir/playbooks/system.yml || logp fatal "Failed to apply system rules!"
@@ -188,13 +203,34 @@ function performActions()
 	esac
 }
 
-#function readUsers()
-#{
-#	if [ ! $# -eq 1 ] || [ ! -f $1 ]; then; logp fatal "Can't read users from non-existing file '$1'"; fi
-#	export ADMIN_USER=admin
-#	export ADMIN_GROUP=$(cat $1 | grep admin | head -n1 | cut -d: -f 2)
-#	export ADMIN_SSHKEY=$(cat $1 | grep admin | head -n1 | cut -d: -f 3)
-#}
+function getUserInfo()
+{
+	if [ "$ACTION" = "bootstrap" ]; then
+		logp info "The following info is required. The experiment requires you to answer truely and wholeheartedly."
+		logp question "remote host's network address"; read -r RHOST
+		logp question "remote host's ssh user"; read -r RUSER
+		logp question "remote host's ssh pass"; read -r RPASS
+	fi
+}
+
+function readUsers()
+{
+	if [ ! $# -eq 1 ] || [ ! -f $1 ]; then; logp fatal "Can't read users from non-existing file '$1'"; fi
+	export ADMIN_USER=admin
+	export ADMIN_GROUP=$(cat $1 | grep admin | head -n1 | cut -d: -f 2)
+	export ADMIN_SSHKEY=$(cat $1 | grep admin | head -n1 | cut -d: -f 3)
+}
+
+function lock_access()
+{
+	if ssh -p $RPORT -q $RUSER@$RHOST exit; then
+		ssh -p $RPORT $RUSER@$RHOST 'bash -s' <<-EOF
+			useradd -m $ADMIN_USER
+			
+		EOF
+
+	fi
+}
 
 #http://stackoverflow.com/a/18443300/441757
 function realpath() {
@@ -272,7 +308,6 @@ function main()
 {
 	checkEnvironment
 	handleFlags $@
-	prepareEnvironment
 	performActions $@
 }
 
