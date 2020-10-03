@@ -170,14 +170,13 @@ function performActions()
 					if [ ! $# -eq 3 ]; then logp usage "$callee bootstrap raspberry [RHOST]"; fi
 					export RHOST=$3
 
-					checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
 					banner "bootstrapping raspberry at $RHOST"
 					getUserInfo	|| logp fatal "Failed to get user info"
-					exit 0
+					checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
+					checkIsManageable $RHOST $RPORT $RUSER $RPASS || logp fatal "Couldn't login to $RHOST with given credentials."
 					prepareEnvironment || logp fatal "Couldn't prepare environment"
 					#readUsers $basedir/userlist.txt|| logp fatal "Couldn't read users"
-					echo $ADMIN_SSH_KEY
-					ansible-playbook -i $RHOST, -e  "ansible_port=2222 ansible_ssh_user=$ANSIBLE_USER ansible_ssh_pass=$ANSIBLE_PASS"  $basedir/playbooks/system.yml || logp fatal "Failed to apply system rules!"
+					ansible-playbook -i $RHOST, -e  "ansible_port=$RPORT ansible_ssh_user=$RUSER ansible_ssh_pass=$RPASS"  $basedir/playbooks/system.yml || logp fatal "Failed to apply system rules!"
 					ansible-playbook -i $RHOST, $basedir/playbooks/ros.yml || logp fatal "Failed to apply ros rules!"
 				;;
 				arduino-env)
@@ -208,6 +207,7 @@ function getUserInfo()
 	if [ "$ACTION" = "bootstrap" ]; then
 		logp info "The following info is required. The experiment requires you to answer truely and wholeheartedly."
 		logp question "remote host's network address"; read -r RHOST
+		logp question "remote host's port"; read -r RPORT
 		logp question "remote host's ssh user"; read -r RUSER
 		logp question "remote host's ssh pass"; read -r RPASS
 	fi
@@ -263,6 +263,12 @@ function checkIsReachable()
 	esac
 }
 
+function checkIsManageable()
+{
+	prepareDependency sshpass
+	echo "$4" | sshpass ssh -p $2 -o PreferredAuthentications=password -o PubkeyAuthentication=no $3@$1 exit 1>/dev/null
+}
+
 #https://stackoverflow.com/a/932187/12394351
 function checkConnectivity()
 {
@@ -286,6 +292,16 @@ function checkEnvironment()
 	#fi
 	if ! checkConnectivity; then
 		logp fatal "Couldn't connect to network!"
+	fi
+}
+
+function prepareDependency()
+{
+	dep=$1
+	if ! command -v $dep &> /dev/null; then
+		logp info "Dependency '$dep' is missing. Attempting to install:"
+		PKG_UPDATE || logp fatal "Couldn't update packages"
+		PKG_INSTALL $dep || logp fatal "Couldn't install dependency '$dep'!"
 	fi
 }
 
