@@ -21,7 +21,7 @@
 # User + Key Setup
 - name: Create a new regular user with sudo privileges
   user:
-    name: "'{{ lookup('env', 'ADMIN_USER') }}'"
+    name: "{{ lookup('env', 'ADMIN_USER') }}"
     state: present
     groups: wheel
     append: true
@@ -30,9 +30,9 @@
 
 - name: Set authorized key for remote user
   authorized_key:
-    user: "'{{ lookup('env', 'ADMIN_USER') }}'"
+    user: "{{ lookup('env', 'ADMIN_USER') }}"
     state: present
-    key: "'{{ lookup('env', 'ADMIN_SSHKEY') }}'"
+    key: "{{ lookup('env', 'ADMIN_SSHKEY') }}"
 
 - name: Disable password authentication for root
   lineinfile:
@@ -46,21 +46,21 @@
   apt: update_cache=yes
 
 - name: Install required system packages
-  apt: name='{{ lookup('env', 'SYSTEM_PACKAGES') }}' state=latest
+  apt: name="{{ sys_packages.split() }}"  state=latest
 
-# UFW Setup
-- name: UFW - Allow SSH connections
-  ufw:
-    rule: allow
-    name: OpenSSH
-
-- name: UFW - Deny all other incoming traffic by default
-  ufw:
-    state: enabled
-    policy: deny
-    direction: incoming
-
-- name: Check if a reboot is needed
-  notify: reboot system
-  stat: path=/var/run/reboot-required get_md5=no
+## UFW Setup
+#- name: UFW - Allow SSH connections
+#  ufw:
+#    rule: allow
+#    name: OpenSSH
+#
+#- name: UFW - Deny all other incoming traffic by default
+#  ufw:
+#    state: enabled
+#    policy: deny
+#    direction: incoming
+#
+#- name: Check if a reboot is needed
+#  notify: reboot system
+#  stat: path=/var/run/reboot-required get_md5=no
 

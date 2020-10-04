@@ -1,0 +1,2 @@
+---
+sys_packages: "{{ lookup('env', 'SYSTEM_PACKAGES') }}"

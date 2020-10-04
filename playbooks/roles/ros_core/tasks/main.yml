@@ -1,4 +1,34 @@
+#- name: Add specified repository into sources list
+#  apt_repository:
+#    repo: deb http://packages.ros.org/ros/ubuntu main
+#    state: present
+
+#inspired upon https://github.com/pgorczak/ansible-role-ros
+- name: Install python dependency
+  apt:
+    pkg:
+      - python-simplejson
+      - gpg
+    state: latest
+    update_cache: true
+
+- name: Get keys for ros repository
+  apt_key:
+    keyserver: hkp://keyserver.ubuntu.com:80
+    id: 'C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654'
+
+- name: Setup repository for ros packages
+  apt_repository:
+    repo: 'deb http://packages.ros.org/ros/ubuntu {{ ansible_lsb.codename }} main'
+    filename: 'ros-latest'
+    update_cache: yes
+
+- name: install ros packages
+  apt:
+    pkg: "{{ ros_packages }}"
+
+- name: Update apt
+  apt: update_cache=yes
+
 - name: Install core components of ROS
-  package:
-    name: "'{{ lookup('env', 'ROS_PACKAGES') }}'"
-    state: present
+  apt: name="{{ros_packages.split() }}" state=latest

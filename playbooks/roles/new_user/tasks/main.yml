@@ -1,0 +1,15 @@
+# User + Key Setup
+- name: Create a new user with sudo privileges
+  user:
+    name: "{{ lookup('env', 'RUSER') }}"
+    state: present
+#    groups: wheel
+#    append: true
+    create_home: true
+    shell: /bin/bash
+
+- name: Set authorized key for new user
+  authorized_key:
+    user: "{{ lookup('env', 'RUSER') }}"
+    state: present
+    key: "{{ lookup('file', lookup('env','RKEY') + '.pub') }}"

@@ -1,0 +1,7 @@
+---
+ros_packages: "{{ lookup('env', 'ROS_PACKAGES') }}"
+ros_versions:
+  trusty: indigo
+  xenial: kinetic
+  bionic: melodic
+  focal: noetic

@@ -1,6 +1,6 @@
 - hosts: all
   become: true
   vars_files:
-    - roles/system/vars/main.yml
+    - roles/ros_core/vars/main.yml
   roles:
-    - system
+    - ros_core
