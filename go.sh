@@ -148,6 +148,7 @@ function usage()
 	(logp usage "")
 	cat<<-EOF
 		$callee bootstrap raspberry
+		$callee bootstrap arduino
 		$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]
 		$callee clean
 		$callee reset # this clears out more than you might want
@@ -174,7 +175,7 @@ function performActions()
 {
 	case $ACTION in
 		bootstrap)
-			[ $# -lt 2 ] && logp usage "$callee bootstrap [raspberry | arduino-env ] [ARGS]"
+			[ $# -lt 2 ] && logp usage "$callee bootstrap [raspberry | arduino | arduino-env ] [ARGS]"
 			case $2 in
 				raspberry)
 					#if [ ! $# -eq 3 ]; then logp usage "$callee bootstrap raspberry [RHOST]"; fi
@@ -209,6 +210,32 @@ function performActions()
 
 					logp info "Bootstrap complete."
 				;;
+				arduino)
+					banner "Arduino here to bootstrap your spine."
+
+					[ ! -f $ARDUINO_FIRMWARE_LOCATION ] && logp fatal "Store the compiled arduino firmware file @ $ARDUINO_FIRMWARE_LOCATION"
+
+					if checkConfigcacheExists $configcache ; then readConfigcache || logp fatal "configfile' $configfile' has corrupted."
+					else getUserInfo	|| logp fatal "Failed to get your info"; fi
+
+					prepareEnvironment || logp fatal "The Environment has denied your request."
+
+					logp question "Local or Remote ? -> type L or R : "; read -r response
+					if [ "$response" = "L" ]; then
+						logp info "Attempting to flash locally.."
+
+					elif [ "$response" = "R" ]; then
+						logp info "Attempting to flash remotely.."
+						checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
+						
+						target="arduino_upload"; logp info "Started running playbook $target...";
+						ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
+
+					else
+						logp fatal "bekijk 't maar"
+					fi
+
+				;;
 				arduino-env)
 					[ ! $# -eq 3 ] && logp usage "$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]"
 					if checkIsReachable "$(echo $3 | cut -d: -f1)"; then
@@ -226,6 +253,7 @@ function performActions()
 		;;
 		clean)
 			[ -f $configcache ] && rm -f $configcache && logp info "Cleaned configcache '$configcache'"
+			[ -f $ARDUINO_FIRMWARE_LOCATION ] && rm -f $ARDUINO_FIRMWARE_LOCATION && logp info "Cleaned configcache '$ARDUINO_FIRMWARE_LOCATION'"
 		;;
 		reset)
 			logp warning_nnl "Are you sure? This will also delete ansible/user keys! -> type BADIDEA to continue : "
@@ -234,6 +262,7 @@ function performActions()
 				[ -d "$ssh" ] && rm -rf $ssh && logp info "Cleaned ssh folder with keys '$ssh'"
 				[ -f $refresh ] && rm -f $refresh && logp info "Cleaned git update refresh file '$refresh'"
 				[ -f $configcache ] && rm -f $configcache && logp info "Cleaned configcache '$configcache'"
+				[ -f $ARDUINO_FIRMWARE_LOCATION ] && rm -f $ARDUINO_FIRMWARE_LOCATION && logp info "Cleaned configcache '$ARDUINO_FIRMWARE_LOCATION'"
 			else
 				echo "N\\A"
 			fi

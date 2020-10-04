@@ -9,7 +9,9 @@ ROS_RELEASE=melodic
 
 ROS_PACKAGES="ros-$ROS_RELEASE-ros-base"
 SYSTEM_PACKAGES="apt ufw"
+
 ARDUINO_PACKAGES="arduino-mk avr-gcc"
+ARDUINO_FIRMWARE_LOCATION=$basedir/arduino.hex
 
 OS_DISTRO=ubuntu
 OS_RELEASE=bionic
