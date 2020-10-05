@@ -10,6 +10,7 @@ ROS_PACKAGES="	ros-$ROS_RELEASE-ros-base				\
 				python-rosinstall-generator				\
 				python-wstool							\
 				build-essential							\
+				ros-$ROS_RELEASE-catkin					\
 				python-rosdep"
 
 SYSTEM_PACKAGES="apt ufw"
