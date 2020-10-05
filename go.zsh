@@ -82,7 +82,6 @@ function banner()
 	whoami=$(whoami)
 	ip="$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' | tail -n1)"
 	beacon="$(whoami)@$HOST ($ip)"
-
 	zsh -c "echo -e \"\e[1m\e[33m+$(termFill '-' $((cols - 2)))+\""
 	printf "|\e[0m`tput bold` %-$((cols - $((15 + ${#PRETTY_NAME} + ${#beacon})) ))s%-5s\e[1m\e[33m |\n" "$callee -- ROS:$ROS_RELEASE" "running $PRETTY_NAME @ $beacon"
 	printf "\e[1m\e[33m| %-$((cols - 4))s\e[1m\e[33m |\n" ""
@@ -130,7 +129,7 @@ function writeConfigcache() { env | grep -f $configtemplate > $configcache }
 function getUserInfo()
 {
 	if [ "$ACTION" = "bootstrap" ] && [ "$2" = "raspberry" ]; then
-		{ [ ! -f $configcache ] || [ $(wc -l $configcache | cut -f1 -d\ ) -lt 3 ] } && logp info "Your attention is required. The experiment requires you to answer truely and wholeheartedly."
+		{ [ ! -f $configcache ] || [[ $(wc -l $configcache | sed -e 's/^[[:space:]]*//' | cut -f1 -d\ ) -lt 3 ]] } && logp info "Your attention is required. The experiment requires you to answer truely and wholeheartedly."
 		[ -z "${RHOST+x}" ] && logp question "remote host's network address" && read -r RHOST
 		[ -z "${RPORT+x}" ] && logp question "remote host's port" &&  read -r RPORT
 		[ -z "${DEFAULT_USER+x}" ] && logp question "remote host's first login user" && read -r DEFAULT_USER

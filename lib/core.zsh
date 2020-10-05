@@ -21,8 +21,8 @@ function logp()
 
 function termFill() { 
 		cols=$(tput cols)
-		if [ $# -gt 1 ]; then while [[ $x -lt $cols ]] && [[ $x -lt $2 ]]; do printf "$1"; let x=$x+1; done;
-		else while [[ $x -lt $cols ]]; do printf "$1"; let x=$x+1; done; fi
+		if [ $# -gt 1 ]; then while [[ $x -lt $cols ]] && [[ $x -lt $2 ]]; do printf "%s" "$1"; let x=$x+1; done;
+		else while [[ $x -lt $cols ]]; do printf "%s" "$1"; let x=$((x+1)); done; fi
 }
 
 #http://stackoverflow.com/a/18443300/441757
