@@ -89,10 +89,10 @@ function image_write()
 
 function image_prepare_network()
 {
-	[ -z ${blk_dev+x} ] || [ -b "${blk_dev}1" ] || logp fatal "Couldn't find mountable partition @ ${blk_dev}1"
+	[ ! -z ${blk_dev+x} ] && { [ -b "${blk_dev}1" ] && blk_dev_boot="${blk_dev}1" } || { [ -b "${blk_dev}p1" ] && blk_dev_boot="${blk_dev}p1" } || logp fatal "Couldn't find mountable bootpartition for ${blk_dev}"
 	[ -d $os_mnt ] || mkdir -p $os_mnt || logp fatal "Couldn't setup mount directory @ $os_mnt"
 
-	sudo mount "${blk_dev}1" $os_mnt || logp fatal "Failed to mount boot partion @ $os_mnt"
+	sudo mount "${blk_dev_boot}" $os_mnt || logp fatal "Failed to mount boot partion @ $os_mnt"
 
 	[ ! -z "$WIFI_SSID" ] || logp fatal "Wifi name '$WIFI_SSID' not set!"
 	[ ! -z "$WIFI_PASS" ] || logp fatal "Wifi password '$WIFI_PASS' not set!"
@@ -105,7 +105,7 @@ function image_prepare_network()
 			p=$(pwd)
 			cd $os_mnt
 			logp info "Inserting network configuration..."
-			sudo sh -c "cat -e >> $OS_BOOT_NETWORK_CONFIG \
+			sudo sh -c "cat >> $OS_BOOT_NETWORK_CONFIG \
 			<<-EOF
 			# inserted by bootstrapper arrrgh
 			wifis:
