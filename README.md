@@ -7,6 +7,7 @@ Hacky might be be an understatement.
 ./go.zsh bootstrap raspberry-microsd (downloads and verifies distribution, then writes it to sdcard)\
 ./go.zsh bootstrap arduino (upload firmware locally and remotely)\
 ./go.zsh bootstrap arduino-env (sets up arduino build environment)\
+./go.zsh create accesspoint (works only on Arch)
 ./go.zsh dependencies (attempts to pull in all dependencies)\
 ./go.zsh help\
 ./go.zsh reset\
