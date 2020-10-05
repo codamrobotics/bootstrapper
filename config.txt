@@ -31,6 +31,7 @@ OS_BOOT_NETWORK_CONFIG=network-config
 
 # build dependencies
 DEPENDENCIES=(	ansible									\
+				git										\
 				ssh										\
 				ssh-copy-id								\
 				ssh-keygen								\

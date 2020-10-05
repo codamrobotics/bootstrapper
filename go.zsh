@@ -40,7 +40,7 @@ case $kernel in
 		case $flavour in
 			arch)
 				alias PKG_UPDATE="yay -Sy"
-				alias PKG_INSTALL="yay --noconfirm -S"
+				alias PKG_INSTALL="yay -S"
 			;;
 			ubuntu)
 				alias PKG_UPDATE="sudo apt-get update"
@@ -158,7 +158,7 @@ function prepareDependency()
 	dep=$1
 	if ! command -v $dep &> /dev/null; then
 		logp info "Dependency '$dep' is missing. Attempting to install:"
-		PKG_UPDATE || logp fatal "Couldn't update packages"
+		PKG_UPDATE || logp fatal "Couldn't update from repositories"
 		PKG_INSTALL $dep || logp fatal "Couldn't install dependency '$dep'!"
 	fi
 }
@@ -176,6 +176,7 @@ function prepareAllDependencies()
 			PKG_INSTALL $dep || logp fatal "Couldn't install dependency '$dep'!"
 		fi
 	done
+	logp info "All dependencies were met."
 }
 
 #https://stackoverflow.com/questions/3258243/check-if-pull-needed-in-git
@@ -201,7 +202,7 @@ function pullMaster()
 function prepareEnvironment()
 {
 	[ "$(echo $SHELL | rev | cut -d\/ -f1 | rev)" = "zsh" ] || logp fatal "$callee requires to be run with zsh."
-	checkConnectivity && checkMasterUpdate && pullMaster || logp warning "An update has failed you. Your computer will explode now."
+	checkConnectivity && checkMasterUpdate && { pullMaster || logp warning "An update has failed you. Your computer will explode now." } || true
 }
 
 function handleFlags()
@@ -210,6 +211,7 @@ function handleFlags()
 	# read action options
 	for ARG in $@; do
 		[ "${ARG}" = "bootstrap" ] && ACTION="${ARG}" && break
+		[ "${ARG}" = "dependencies" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "clean" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "reset" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "help" ] && ACTION="${ARG}" && break
@@ -307,6 +309,9 @@ function performActions()
 				;;
 			esac
 		;;
+		dependencies) #########################################################
+			prepareAllDependencies || logp fatal "Missing dependencies."
+		;;
 		clean) #################################################################
 			[ -f $ARDUINO_FIRMWARE_LOCATION ] && rm -f $ARDUINO_FIRMWARE_LOCATION && logp info "Cleaned configcache '$ARDUINO_FIRMWARE_LOCATION'"
 			[ -d $downloads ] && rm -rf $downloads && logp info "Cleaned out downloads folder : $downloads."
@@ -335,6 +340,7 @@ function usage()
 		$callee bootstrap raspberry-microsd
 		$callee bootstrap arduino
 		$callee bootstrap arduino-env
+		$callee dependencies
 		$callee clean # deletes replaceable data
 		$callee reset # this clears out more than you might want
 		$callee help	
