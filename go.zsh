@@ -25,6 +25,7 @@ os_img_checksum=$os_img.sha256sums
 os_mnt=$basedir/.mnt
 source $lib/checks.zsh || exit 1
 source $lib/image.zsh || exit 1
+source $lib/create_ap.zsh || exit 1
 
 # internal runtime variables
 banner=false
@@ -36,8 +37,8 @@ case $kernel in
 		alias PKG_INSTALL="brew install"
 	;;
 	Linux)
-		flavour=$(cat /etc/os-release | grep ID_LIKE | cut -d= -f2)
-		case $flavour in
+		os_flavour=$(cat /etc/os-release | grep ID_LIKE | cut -d= -f2)
+		case $os_flavour in
 			arch)
 				alias PKG_UPDATE="yay -Sy"
 				alias PKG_INSTALL="yay -S"
@@ -46,10 +47,10 @@ case $kernel in
 				alias PKG_UPDATE="sudo apt-get update"
 				alias PKG_INSTALL="sudo apt-get install -y"
 			;;
-			*) logp fatal "You have choosen an operating system that is not on good terms with the Federation." ;;
+			*) logp usage "You have choosen an operating system that is not on good terms with the Federation." ;;
 		esac
 	;;
-	*) logp fatal "You have choosen an operating system that is not on good terms with the Federation." ;;
+	*) logp usage "You have choosen an operating system that is not on good terms with the Federation." ;;
 esac
 # end of environment variables
 
@@ -128,26 +129,46 @@ function writeConfigcache() { env | grep -f $configtemplate > $configcache }
 
 function getUserInfo()
 {
-	if [ "$ACTION" = "bootstrap" ] && [ "$2" = "raspberry" ]; then
-		{ [ ! -f $configcache ] || [[ $(wc -l $configcache | sed -e 's/^[[:space:]]*//' | cut -f1 -d\ ) -lt 3 ]] } && logp info "Your attention is required. The experiment requires you to answer truely and wholeheartedly."
-		[ -z "${RHOST+x}" ] && logp question "remote host's network address" && read -r RHOST
-		[ -z "${RPORT+x}" ] && logp question "remote host's port" &&  read -r RPORT
-		[ -z "${DEFAULT_USER+x}" ] && logp question "remote host's first login user" && read -r DEFAULT_USER
-		[ -z "${DEFAULT_PASS+x}" ] && logp question "remote host's first login  pass" && read -r DEFAULT_PASS
-		[ -z "${ADMIN_USER+x}" ] && logp question "remote host's preferred admin user" && read -r ADMIN_USER
-		[ -z "${ADMIN_PASS+x}" ] && logp question "remote host's preferred admin password" && read -r ADMIN_PASS
-		[ -z "${ADMIN_KEY+x}" ] && logp question "remote host's preferred admin key" && read -r ADMIN_KEY
-	elif [ "$ACTION" = "bootstrap" ] && [ "$2" = "raspberry-microsd" ]; then
-		checkConfigcacheExists $configcache && readConfigcache
-		logp info "Your attention is required. The experiment requires you to answer truely and wholeheartedly."
-		if which lsblk; then
-			logp info "Block devices : "
-			lsblk -f 
-		fi
-		logp question "Destination microsd card (or other blockdevice)"; read -r blk_dev
-		[ -z "${WIFI_SSID+x}" ] && logp question "Wifi address" && read -r WIFI_SSID
-		[ -z "${WIFI_PASS+x}" ] && logp question "Wifi password" && read -r WIFI_PASS
-	fi
+	checkConfigcacheExists $configcache  && { readConfigcache || logp fatal "configfile' $configfile' has corrupted." }
+
+	case $ACTION in 
+		bootstrap)
+			case $2 in
+				raspberry)
+					{ [ ! -f $configcache ] || [[ $(wc -l $configcache | sed -e 's/^[[:space:]]*//' | cut -f1 -d\ ) -lt 3 ]] } && logp info "Your attention is required. The experiment requires you to answer truely and wholeheartedly."
+					[ -z "${RHOST+x}" ] && logp question "remote host's network address" && read -r RHOST
+					[ -z "${RPORT+x}" ] && logp question "remote host's port" &&  read -r RPORT
+					[ -z "${DEFAULT_USER+x}" ] && logp question "remote host's first login user" && read -r DEFAULT_USER
+					[ -z "${DEFAULT_PASS+x}" ] && logp question "remote host's first login  pass" && read -r DEFAULT_PASS
+					[ -z "${ADMIN_USER+x}" ] && logp question "remote host's preferred admin user" && read -r ADMIN_USER
+					[ -z "${ADMIN_PASS+x}" ] && logp question "remote host's preferred admin password" && read -r ADMIN_PASS
+					[ -z "${ADMIN_KEY+x}" ] && logp question "remote host's preferred admin key" && read -r ADMIN_KEY
+				;;
+				raspberry-microsd)
+					logp info "Your attention is required. The experiment requires you to answer truely and wholeheartedly."
+					if which lsblk; then
+						logp info "Block devices : "
+						lsblk -f 
+					fi
+					logp question "Destination microsd card (or other blockdevice)"; read -r blk_dev
+					[ -z "${WIFI_SSID+x}" ] && logp question "Wifi address" && read -r WIFI_SSID
+					[ -z "${WIFI_PASS+x}" ] && logp question "Wifi password" && read -r WIFI_PASS
+				;;
+				*) logp fatal "CRASH @ getUserInfo" ;;
+			esac
+		;;
+		create)
+			case $2 in
+				accesspoint)
+					[ -z "${WIFI_SSID+x}" ] && logp question "Wifi address" && read -r WIFI_SSID
+					[ -z "${WIFI_PASS+x}" ] && logp question "Wifi password" && read -r WIFI_PASS
+					[ -z "${WIFI_DEV+x}" ] && { which ifconfig && ifconfig || true } && logp question "Wifi device" && read -r WIFI_DEV
+				;;
+				*) logp fatal "CRASH @ getUserInfo" ;;
+			esac
+		;;
+		*) logp fatal "CRASH @ getUserInfo" ;;
+	esac
 
 	writeConfigcache
 }
@@ -210,6 +231,7 @@ function handleFlags()
 	# read action options
 	for ARG in $@; do
 		[ "${ARG}" = "bootstrap" ] && ACTION="${ARG}" && break
+		[ "${ARG}" = "create" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "dependencies" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "clean" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "reset" ] && ACTION="${ARG}" && break
@@ -227,7 +249,6 @@ function performActions()
 				raspberry) #####################################################
 					banner "Arr matey. Bootstrapping raspberry. Strike the earth!"
 
-					checkConfigcacheExists $configcache  && { readConfigcache || logp fatal "configfile' $configfile' has corrupted." }
 					getUserInfo $@	|| logp fatal "Failed to get your info"
 
 					checkConnectivity || logp fatal "The network doesn't believe you have connected to it."
@@ -246,6 +267,9 @@ function performActions()
 						fi
 						sleep 5 # lock fucks with ssh-server
 					fi
+
+					target="unattended-upgrades"; logp info "Started running playbook $target...";
+					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
 					target="system"; logp info "Started running playbook $target...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
@@ -275,8 +299,7 @@ function performActions()
 
 					[ ! -f $ARDUINO_FIRMWARE_LOCATION ] && logp fatal "Store the compiled arduino firmware file @ $ARDUINO_FIRMWARE_LOCATION"
 
-					if checkConfigcacheExists $configcache ; then readConfigcache || logp fatal "configfile' $configfile' has corrupted."
-					else getUserInfo $@	|| logp fatal "Failed to get your info"; fi
+					getUserInfo	$@ || logp fatal "Failed to get your info"
 
 					logp question "Local or Remote ? -> type L or R : "; read -r response
 					if [ "$response" = "L" ]; then
@@ -306,9 +329,23 @@ function performActions()
 						logp usage "$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]";
 					fi
 				;;
+				*) logp usage "You have choosen an option that is not on good terms with the Federation." ;;
 			esac
 		;;
-		dependencies) #########################################################
+		create) ################################################################
+			case $2 in
+				accesspoint)
+					[ "$kernel" = "Linux" ] && [ "$os_flavour" = "arch" ] || logp fatal "This function depends on AUR package create_ap. Since you are not running a flavour of Arch Linux I canno't help you. Setup a wifi accespoint manually."
+					which create_ap || which yay || logp fatal "I don't know how to get create_ap from the AUR. Do you have 'yay' installed? If not install it and run again, or get a hold of 'create_ap' yourself."
+
+					banner "The Federation has sent you an accesspoint."
+					getUserInfo	$@ || logp fatal "Failed to get your info"
+					create_accesspoint || logp fatal "Killed."
+				;;
+				*) logp usage "You have choosen an option that is not on good terms with the Federation." ;;
+			esac
+		;;
+		dependencies) #######################$##################################
 			prepareAllDependencies || logp fatal "Missing dependencies."
 		;;
 		clean) #################################################################
@@ -325,7 +362,7 @@ function performActions()
 				[ -d $downloads ] && rm -rf $downloads && logp info "Cleaned out downloads folder : $downloads."
 			else	logp fatal "Probably a wise decision."; fi
 		;;
-		help) ##################################################################
+		help|*) ################################################################
 			usage
 		;;
 	esac
@@ -339,6 +376,7 @@ function usage()
 		$callee bootstrap raspberry-microsd
 		$callee bootstrap arduino
 		$callee bootstrap arduino-env
+		$callee create accesspoint
 		$callee dependencies
 		$callee clean # deletes replaceable data
 		$callee reset # this clears out more than you might want
