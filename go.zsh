@@ -3,11 +3,12 @@
 # Configurations go into config.txt
 #
 
-# environment variables
+# internal environment variables
 set -a
 kernel="$(uname -s)"
 callee=$0
-basedir=$(dirname "$0")
+source $(dirname "$0")/lib/core.zsh
+basedir=$(realpath $(dirname "$0"))
 lib=$basedir/lib
 playbooks=$basedir/playbooks
 playbooks_cpy=$basedir/.playbooks_cpy
@@ -17,6 +18,15 @@ ssh_d=$basedir/.ssh
 configcache=$basedir/.config
 configtemplate=$lib/config.template
 refresh=$basedir/.refresh
+source $basedir/config.txt || exit 1
+downloads=$basedir/downloads
+os_img=$downloads/$OS_IMG
+os_img_checksum=$os_img.sha256sums
+os_mnt=$basedir/.mnt
+source $lib/checks.zsh || exit 1
+source $lib/image.zsh || exit 1
+
+# internal runtime variables
 banner=false
 
 ## os variables
@@ -24,102 +34,39 @@ case $kernel in
 	Darwin)
 		alias PKG_UPDATE="brew update"
 		alias PKG_INSTALL="brew install"
-		;;
+	;;
 	Linux)
 		flavour=$(cat /etc/os-release | grep ID_LIKE | cut -d= -f2)
 		case $flavour in
 			arch)
 				alias PKG_UPDATE="yay -Sy"
 				alias PKG_INSTALL="yay --noconfirm -S"
-				;;
+			;;
 			ubuntu)
 				alias PKG_UPDATE="sudo apt-get update"
 				alias PKG_INSTALL="sudo apt-get install -y"
-				;;
+			;;
+			*) logp fatal "You have choosen an operating system that is not on good terms with the Federation." ;;
 		esac
-		;;
+	;;
+	*) logp fatal "You have choosen an operating system that is not on good terms with the Federation." ;;
 esac
 # end of environment variables
 
 function clean_up()
 {
+	[ ! -f $basedir/.tmp ] || rm -f $basedir/.tmp
+	[ ! -z "$(mount | grep $os_mnt)" ] && logp info "Unmounting $os_mnt" && sudo umount $os_mnt
 	case $1 in
-		INT)
-			logp fatal "aborting.."
-		;;
-		EXIT)
-			tmp_delete
-			if [ $banner = true ]; then
-				logp endsection
-			fi
-		;;
-		TERM)
-			logp fatal "aborting.."
-		;;
+		INT) logp fatal "aborting.." ;;
+		EXIT) [ $banner = true ] && logp endsection ;;
+		TERM) logp fatal "aborting.." ;;
 	esac
 }
 
 trap "clean_up INT" INT
 trap "clean_up TERM" TERM
 trap "clean_up EXIT" EXIT
-
-function logp()
-{ 
-	case "$1" in
-		info)
-			zsh -c "echo -e \"\e[32m\e[1m* \e[0m$2\""
-			;;
-		info_nnl)
-			zsh -c "echo -n -e \"\e[32m\e[1m* \e[0m$2\""
-			;;
-		usage)
-			zsh -c "echo -e \"\e[32m\e[1mUsage: \e[0m$2\""
-			exit 0
-			;;
-		question)
-			zsh -c "echo -e -n \"\e[32m\e[1mUse your keyboard:  \e[0m$2 : \""
-			;;
-		warning)
-			zsh -c "echo -e \"\033[31m\e[1m* \e[0m$2\""
-			;;
-		warning_nnl)
-			zsh -c "echo -n -e \"\033[31m\e[1m* \e[0m$2\""
-			;;
-		fatal)
-			zsh -c "echo -e \"\e[31m\e[1m* \e[0m\e[30m\e[101m$2\e[0m\""
-			exit 1
-			;;
-		beginsection)
-				zsh -c "echo -e \"\e[1m\e[33m$(termFill '*')\e[0m\""
-				zsh -c "echo -e \"\e[1m\e[33m$(termFill '|')\e[0m\""
-			;;
-		endsection)
-				zsh -c "echo -e \"\e[1m\e[33m$(termFill '|')\e[0m\""
-				zsh -c "echo -e \"\e[1m\e[33m$(termFill '*')\e[0m\""
-			;;
-	esac
-}
-
-function termFill() { 
-		cols=$(tput cols)
-		if [ $# -gt 1 ]; then
-			while [[ $x -lt $cols ]] && [[ $x -lt $2 ]]; do printf "$1"; let x=$x+1; done;
-		else
-			while [[ $x -lt $cols ]]; do printf "$1"; let x=$x+1; done;
-		fi
-}
-
-function tmp_create()
-{
-	if [ -d $playbooks_cpy ]; then logp fatal "Temporary directory $playbooks_cpy already exists!"; fi
-	cp -r $playbooks $playbooks_cpy || logp fatal "Couldn't setup tmp directory!"
-}
-
-function tmp_delete()
-{
-	if [ -f $basedir/.tmp ]; then rm -f $basedir/.tmp; fi
-	if [ -d $playbooks_cpy ]; then rm -r $playbooks_cpy; fi
-}
 
 function banner()
 {
@@ -148,9 +95,10 @@ function usage()
 	(logp usage "")
 	cat<<-EOF
 		$callee bootstrap raspberry
+		$callee bootstrap raspberry-microsd
 		$callee bootstrap arduino
-		$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]
-		$callee clean
+		$callee bootstrap arduino-env
+		$callee clean # deletes replaceable data
 		$callee reset # this clears out more than you might want
 		$callee help	
 	EOF
@@ -163,10 +111,10 @@ function handleFlags()
 
 	# read action options
 	for ARG in $@; do
-		if [ "${ARG}" = "bootstrap" ]; then ACTION="${ARG}"; break; fi
-		if [ "${ARG}" = "clean" ]; then ACTION="${ARG}"; break; fi
-		if [ "${ARG}" = "reset" ]; then ACTION="${ARG}"; break; fi
-		if [ "${ARG}" = "help" ]; then ACTION="${ARG}"; break; fi
+		[ "${ARG}" = "bootstrap" ] && ACTION="${ARG}" && break
+		[ "${ARG}" = "clean" ] && ACTION="${ARG}" && break
+		[ "${ARG}" = "reset" ] && ACTION="${ARG}" && break
+		[ "${ARG}" = "help" ] && ACTION="${ARG}" && break
 	done
 	[ "$ACTION" = "" ] && usage
 }
@@ -174,17 +122,16 @@ function handleFlags()
 function performActions()
 {
 	case $ACTION in
-		bootstrap)
+		bootstrap) #############################################################
 			[ $# -lt 2 ] && logp usage "$callee bootstrap [raspberry | arduino | arduino-env ] [ARGS]"
 			case $2 in
-				raspberry)
-					#if [ ! $# -eq 3 ]; then logp usage "$callee bootstrap raspberry [RHOST]"; fi
-
+				raspberry) #####################################################
 					banner "Arr matey. Bootstrapping raspberry. Strike the earth!"
 
-					if checkConfigcacheExists $configcache ; then readConfigcache || logp fatal "configfile' $configfile' has corrupted."
-					else getUserInfo	|| logp fatal "Failed to get your info"; fi
+					checkConfigcacheExists $configcache  && { readConfigcache || logp fatal "configfile' $configfile' has corrupted." }
+					getUserInfo $@	|| logp fatal "Failed to get your info"
 
+					checkConnectivity || logp fatal "The network doesn't believe you have connected to it."
 					checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
 					prepareEnvironment || logp fatal "The Environment has denied your request."
 					prepareAnsibleEnvironment || logp fatal "The Ansible Environment has denied your request."
@@ -193,7 +140,7 @@ function performActions()
 						target="ansible_user"; logp info "Started running playbook $target...";
 						ansibleRunPlaybook $target firstrun || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 						if checkIsManageable $RHOST $RPORT $DEFAULT_USER $DEFAULT_PASS; then
-							
+							logp info "Default user is still present. Injecting ansible inlog and locking default user.."
 							target="lock"; logp info "Started running playbook $target...";
 							ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 						else 
@@ -208,15 +155,30 @@ function performActions()
 					target="ros"; logp info "Started running playbook $target...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
-					logp info "Bootstrap complete."
+					logp info "The machine has spoken. Bootstrap complete."
 				;;
-				arduino)
+				raspberry-microsd) #############################################
+					banner "Electrons! We summon you to carry out this microsd bootstrapping thing!"
+
+					getUserInfo	$@ || logp fatal "Failed to get your info"
+					image_prepare || logp fatal "Image couldn't be prepared at this moment."
+					image_write || logp fatal "Failed to write image."
+					logp info "The image was written succesfully." 
+
+					image_prepare_network || logp fatal "Failed to apply network information: enter network info manualy!"
+					logp info "The network configuration has decided in favour of the Federation. It was a wise decision." 
+
+					[ ! -z "$(mount | grep $os_mnt)" ] && logp info "Unmounting $os_mnt" && { sudo umount $os_mnt || logp warning "Failed unmounting $os_mnt" }
+					logp info "Syncing last blocks to disk.." && sudo sync
+					logp info "By the analog Gods and the digital! The image was build. Yalla let us bootstrap a raspberry."
+				;;
+				arduino) #######################################################
 					banner "Arduino here to bootstrap your spine."
 
 					[ ! -f $ARDUINO_FIRMWARE_LOCATION ] && logp fatal "Store the compiled arduino firmware file @ $ARDUINO_FIRMWARE_LOCATION"
 
 					if checkConfigcacheExists $configcache ; then readConfigcache || logp fatal "configfile' $configfile' has corrupted."
-					else getUserInfo	|| logp fatal "Failed to get your info"; fi
+					else getUserInfo $@	|| logp fatal "Failed to get your info"; fi
 
 					prepareEnvironment || logp fatal "The Environment has denied your request."
 
@@ -236,7 +198,7 @@ function performActions()
 					fi
 
 				;;
-				arduino-env)
+				arduino-env) ###################################################
 					[ ! $# -eq 3 ] && logp usage "$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]"
 					if checkIsReachable "$(echo $3 | cut -d: -f1)"; then
 						which rsync || logp fatal "Cannot copy to/from host without rsync installed!"
@@ -251,24 +213,22 @@ function performActions()
 				;;
 			esac
 		;;
-		clean)
-			[ -f $configcache ] && rm -f $configcache && logp info "Cleaned configcache '$configcache'"
+		clean) #################################################################
 			[ -f $ARDUINO_FIRMWARE_LOCATION ] && rm -f $ARDUINO_FIRMWARE_LOCATION && logp info "Cleaned configcache '$ARDUINO_FIRMWARE_LOCATION'"
+			[ -d $downloads ] && rm -rf $downloads && logp info "Cleaned out downloads folder : $downloads."
 		;;
-		reset)
-			logp warning_nnl "Are you sure? This will also delete ansible/user keys! -> type BADIDEA to continue : "
-			read -r response
-			if [ "$response" = "BADIDEA" ]; then
+		reset) #################################################################
+			logp warning_nnl "Are you sure? This will also delete ansible/user keys! -> Legal demands that you type IMNOTANIDIOT to continue : "; read -r response
+			if [ "$response" = "IMNOTANIDIOT" ]; then
 				[ -d "$ssh" ] && rm -rf $ssh && logp info "Cleaned ssh folder with keys '$ssh'"
 				[ -f $refresh ] && rm -f $refresh && logp info "Cleaned git update refresh file '$refresh'"
 				[ -f $configcache ] && rm -f $configcache && logp info "Cleaned configcache '$configcache'"
 				[ -f $ARDUINO_FIRMWARE_LOCATION ] && rm -f $ARDUINO_FIRMWARE_LOCATION && logp info "Cleaned configcache '$ARDUINO_FIRMWARE_LOCATION'"
-			else
-				echo "N\\A"
-			fi
+				[ -d $downloads ] && rm -rf $downloads && logp info "Cleaned out downloads folder : $downloads."
+			else	logp fatal "Probably a wise decision."; fi
 
 		;;
-		help)
+		help) ##################################################################
 			usage
 		;;
 	esac
@@ -280,6 +240,7 @@ function prepareAnsibleEnvironment()
 	ANSIBLE_KEY=$(realpath $ssh_d)/ansible
 	[ ! -d $ssh_d ] && mkdir -p $ssh_d
 	if ! checkHasAnsibleKey && [ -z ${RKEY+x} ]; then
+		logp info "Generating sshkey $ANSIBLE_KEY"
 		ssh-keygen -f $ANSIBLE_KEY -q -N "" || logp fatal "Couldn't generate ansible's bloody key!"
 	fi
 }
@@ -288,10 +249,10 @@ function ansibleRunPlaybook
 {
 	target=$1
 	if [ $# -eq 2 ] && [ "$2" = "firstrun" ]; then
-		ansibleoptions="ansible_port=$RPORT ansible_ssh_user=$DEFAULT_USER ansible_ssh_pass=$DEFAULT_PASS"
+		ansibleoptions="ansible_port=$RPORT ansible_ssh_user=$DEFAULT_USER ansible_ssh_pass=$DEFAULT_PASS ansible_python_interpreter=/usr/bin/python3"
 	else
 		[ ! -f $ANSIBLE_KEY ] && logp fatal "No ansible ssh key found."
-		ansibleoptions="ansible_port=$RPORT ansible_ssh_user=$ANSIBLE_USER ansible_ssh_private_key_file=$ANSIBLE_KEY"
+		ansibleoptions="ansible_port=$RPORT ansible_ssh_user=$ANSIBLE_USER ansible_ssh_private_key_file=$ANSIBLE_KEY ansible_python_interpreter=/usr/bin/python3 "
 	fi
 
 	ansible-playbook	-i $RHOST,\
@@ -316,44 +277,33 @@ function readConfigcache()
 
 function writeConfigcache()
 {
-	typeset | grep -f $configtemplate > $configcache
+	env | grep -f $configtemplate > $configcache
 }
 
 function getUserInfo()
 {
-	if [ "$ACTION" = "bootstrap" ]; then
+	if [ "$ACTION" = "bootstrap" ] && [ "$2" = "raspberry" ]; then
+		{ [ ! -f $configcache ] || [ $(wc -l $configcache | cut -f1 -d\ ) -lt 3 ] } && logp info "Your attention is required. The experiment requires you to answer truely and wholeheartedly."
+		[ -z "${RHOST+x}" ] && logp question "remote host's network address" && read -r RHOST
+		[ -z "${RPORT+x}" ] && logp question "remote host's port" &&  read -r RPORT
+		[ -z "${DEFAULT_USER+x}" ] && logp question "remote host's first login user" && read -r DEFAULT_USER
+		[ -z "${DEFAULT_PASS+x}" ] && logp question "remote host's first login  pass" && read -r DEFAULT_PASS
+		[ -z "${ADMIN_USER+x}" ] && logp question "remote host's preferred admin user" && read -r ADMIN_USER
+		[ -z "${ADMIN_PASS+x}" ] && logp question "remote host's preferred admin password" && read -r ADMIN_PASS
+		[ -z "${ADMIN_KEY+x}" ] && logp question "remote host's preferred admin key" && read -r ADMIN_KEY
+	elif [ "$ACTION" = "bootstrap" ] && [ "$2" = "raspberry-microsd" ]; then
+		checkConfigcacheExists $configcache && readConfigcache
 		logp info "Your attention is required. The experiment requires you to answer truely and wholeheartedly."
-		logp question "remote host's network address"; read -r RHOST
-		logp question "remote host's port"; read -r RPORT
-		logp question "remote host's first login user"; read -r DEFAULT_USER
-		logp question "remote host's first login  pass"; read -r DEFAULT_PASS
-		logp question "remote host's preferred admin user"; read -r ADMIN_USER
-		logp question "remote host's preferred admin key"; read -r ADMIN_KEY
+		if which lsblk; then
+			logp info "Block devices : "
+			lsblk -f 
+		fi
+		logp question "Destination microsd card (or other blockdevice)"; read -r blk_dev
+		[ -z "${WIFI_SSID+x}" ] && logp question "Wifi address" && read -r WIFI_SSID
+		[ -z "${WIFI_PASS+x}" ] && logp question "Wifi password" && read -r WIFI_PASS
 	fi
 
 	writeConfigcache
-}
-
-function readUsers()
-{
-	if [ ! $# -eq 1 ] || [ ! -f $1 ]; then; logp fatal "Can't read users from non-existing file '$1'"; fi
-	export ADMIN_USER=admin
-	export ADMIN_GROUP=$(cat $1 | grep admin | head -n1 | cut -d: -f 2)
-	export ADMIN_SSHKEY=$(cat $1 | grep admin | head -n1 | cut -d: -f 3)
-}
-
-#http://stackoverflow.com/a/18443300/441757
-function realpath() {
-  OURPWD=$PWD
-  cd "$(dirname "$1")"
-  LINK=$(readlink "$(basename "$1")")
-  while [ "$LINK" ]; do
-    cd "$(dirname "$LINK")"
-    LINK=$(readlink "$(basename "$1")")
-  done
-  REALPATH="$PWD/$(basename "$1")"
-  cd "$OURPWD"
-  echo "$REALPATH"
 }
 
 function prepareDependency()
@@ -407,13 +357,9 @@ function pullMaster()
 
 function main()
 {
-	checkEnvironment
 	handleFlags $@
 	performActions $@
 }
-
-source $basedir/config.txt || exit 1
-source $lib/checks.sh || exit 1
 if [ checkConnectivity ]; then
 		checkMasterUpdate && pullMaster
 fi

@@ -23,10 +23,6 @@
     filename: 'ros-latest'
     update_cache: yes
 
-- name: install ros packages
-  apt:
-    pkg: "{{ ros_packages }}"
-
 - name: Update apt
   apt: update_cache=yes
 

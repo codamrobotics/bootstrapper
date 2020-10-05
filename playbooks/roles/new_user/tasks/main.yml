@@ -2,11 +2,12 @@
 - name: Create a new user with sudo privileges
   user:
     name: "{{ lookup('env', 'RUSER') }}"
+    password: "{{ lookup('env', 'RUSER') }}"
     state: present
-#    groups: wheel
-#    append: true
+    groups: "{{ lookup('env', 'RGROUPS') }}"
+    append: true
     create_home: true
-    shell: /bin/bash
+    shell: /bin/zsh
 
 - name: Set authorized key for new user
   authorized_key:

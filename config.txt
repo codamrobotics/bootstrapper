@@ -2,12 +2,16 @@
 # All settings
 #
 
-# local dependencies
-DEPENDENCIES=(ansible ssh ssh-copy-id ssh-keygen sshpass)
-
 ROS_RELEASE=melodic
 
-ROS_PACKAGES="ros-$ROS_RELEASE-ros-base"
+ROS_PACKAGES="	ros-$ROS_RELEASE-ros-base				\
+				python-rosdep							\
+				python-rosinstall						\
+				python-rosinstall-generator				\
+				python-wstool							\
+				build-essential							\
+				python-rosdep"
+
 SYSTEM_PACKAGES="apt ufw"
 
 ARDUINO_PACKAGES="arduino-mk avr-gcc"
@@ -15,6 +19,22 @@ ARDUINO_FIRMWARE_LOCATION=$basedir/arduino.hex
 
 OS_DISTRO=ubuntu
 OS_RELEASE=bionic
+OS_RELEASE_VERSION=18.04.5
+OS_IMG_COMP_EXT=.xz
+OS_IMG=ubuntu-$OS_RELEASE_VERSION-preinstalled-server-arm64+raspi3.img$OS_IMG_COMP_EXT
+OS_IMG_LINK_BASE=https://cdimage.ubuntu.com/releases/$OS_RELEASE_VERSION/release
+
+OS_IMG_LINK=$OS_IMG_LINK_BASE/$OS_IMG
+OS_IMG_CHECKSUM_LINK=$OS_IMG_LINK_BASE/SHA256SUMS
+
+OS_BOOT_NETWORK_CONFIG=network-config
+
+# build dependencies
+DEPENDENCIES=(	ansible									\
+				ssh										\
+				ssh-copy-id								\
+				ssh-keygen								\
+				sshpass)								
 
 GIT_ORG=autonomousrobotshq
 GIT_LLC=low-level-controller

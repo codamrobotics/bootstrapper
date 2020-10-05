@@ -22,11 +22,12 @@
 - name: Create a new regular user with sudo privileges
   user:
     name: "{{ lookup('env', 'ADMIN_USER') }}"
+    password: "{{ lookup('env', 'ADMIN_PASS') }}"
     state: present
     groups: wheel
     append: true
     create_home: true
-    shell: /bin/bash
+    shell: /bin/zsh
 
 - name: Set authorized key for remote user
   authorized_key:
@@ -40,6 +41,18 @@
     state: present
     regexp: '^#?PermitRootLogin'
     line: 'PermitRootLogin prohibit-password'
+
+- name: Download grml .zshrc to /etc/skel
+  get_url:
+    url: https://git.grml.org/f/grml-etc-core/etc/zsh/zshrc
+    dest: /etc/skel/.zshrc
+    mode: 0444
+
+- name: Download grml .zshrc.local to /etc/skel
+  get_url:
+    url: https://git.grml.org/f/grml-etc-core/etc/skel/.zshrc
+    dest: /etc/skel/.zshrc.local
+    mode: 0444
 
 # Install Packages
 - name: Update apt
