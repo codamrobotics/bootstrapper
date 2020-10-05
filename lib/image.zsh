@@ -1,3 +1,4 @@
+#!/bin/zsh
 export XZ_DEFAULTS="-T0"
 
 function image_attain()
@@ -85,7 +86,6 @@ function image_write()
 		sudo dd if=$os_img of=$blk_dev bs=4M status=progress && logp info "Download complete. Syncing..." && sync || logp fatal "Failed writing $os_img to $blk_dev"
 	fi
 }
-#!/bin/zsh
 
 function image_prepare_network()
 {

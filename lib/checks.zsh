@@ -51,11 +51,5 @@ function checkConnectivity()
 
 function checkEnvironment()
 {
-	#source /etc/os-release
-	#if [ "$ID" != "$OS_DISTRO" ] || [ "$VERSION_CODENAME" != "$OS_RELEASE" ]; then
-	#	logp fatal "This doesn't seem to be a target system : $PRETTY_NAME"
-	#fi
-	if ! checkConnectivity; then
-		logp fatal "Couldn't connect to network!"
-	fi
+	checkConnectivity || logp fatal "Couldn't connect to network!"
 }

@@ -1,47 +1,28 @@
+#!/bin/zsh
+
 function logp()
 { 
 	case "$1" in
-		info)
-			zsh -c "echo -e \"\e[32m\e[1m* \e[0m$2\""
-			;;
-		info_nnl)
-			zsh -c "echo -n -e \"\e[32m\e[1m* \e[0m$2\""
-			;;
-		usage)
-			zsh -c "echo -e \"\e[32m\e[1mUsage: \e[0m$2\""
-			exit 0
-			;;
-		question)
-			zsh -c "echo -e -n \"\e[32m\e[1mUse your keyboard:  \e[0m$2 : \""
-			;;
-		warning)
-			zsh -c "echo -e \"\033[31m\e[1m* \e[0m$2\""
-			;;
-		warning_nnl)
-			zsh -c "echo -n -e \"\033[31m\e[1m* \e[0m$2\""
-			;;
-		fatal)
-			zsh -c "echo -e \"\e[31m\e[1m* \e[0m\e[30m\e[101m$2\e[0m\""
-			exit 1
-			;;
+		info) zsh -c "echo -e \"\e[32m\e[1m* \e[0m$2\"" ;;
+		info_nnl) zsh -c "echo -n -e \"\e[32m\e[1m* \e[0m$2\"" ;;
+		usage) zsh -c "echo -e \"\e[32m\e[1mUsage: \e[0m$2\""; exit 0 ;;
+		question) zsh -c "echo -e -n \"\e[32m\e[1mUse your keyboard:  \e[0m$2 : \"" ;;
+		warning) zsh -c "echo -e \"\033[31m\e[1m* \e[0m$2\"" ;;
+		warning_nnl) zsh -c "echo -n -e \"\033[31m\e[1m* \e[0m$2\"" ;;
+		fatal) zsh -c "echo -e \"\e[31m\e[1m* \e[0m\e[30m\e[101m$2\e[0m\""; exit 1 ;;
 		beginsection)
 				zsh -c "echo -e \"\e[1m\e[33m$(termFill '*')\e[0m\""
-				zsh -c "echo -e \"\e[1m\e[33m$(termFill '|')\e[0m\""
-			;;
+				zsh -c "echo -e \"\e[1m\e[33m$(termFill '|')\e[0m\"" ;;
 		endsection)
 				zsh -c "echo -e \"\e[1m\e[33m$(termFill '|')\e[0m\""
-				zsh -c "echo -e \"\e[1m\e[33m$(termFill '*')\e[0m\""
-			;;
+				zsh -c "echo -e \"\e[1m\e[33m$(termFill '*')\e[0m\"" ;;
 	esac
 }
 
 function termFill() { 
 		cols=$(tput cols)
-		if [ $# -gt 1 ]; then
-			while [[ $x -lt $cols ]] && [[ $x -lt $2 ]]; do printf "$1"; let x=$x+1; done;
-		else
-			while [[ $x -lt $cols ]]; do printf "$1"; let x=$x+1; done;
-		fi
+		if [ $# -gt 1 ]; then while [[ $x -lt $cols ]] && [[ $x -lt $2 ]]; do printf "$1"; let x=$x+1; done;
+		else while [[ $x -lt $cols ]]; do printf "$1"; let x=$x+1; done; fi
 }
 
 #http://stackoverflow.com/a/18443300/441757
