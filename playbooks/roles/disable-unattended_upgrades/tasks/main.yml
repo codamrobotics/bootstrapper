@@ -1,0 +1,17 @@
+- name: Wait for any possibly running unattended upgrades to finish
+  raw: systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" --wait /bin/true
+
+- name: Remove package unattended-upgrades
+  register: unattended_upgrades_disabled
+  apt: name=unattended-upgrades state=absent
+
+- name: Disable timers for unattended upgrade, so that none will be triggered by the `date -s` call.
+  when: unattended_upgrades_disabled.changed
+  raw: systemctl disable --now {{item}}
+  with_items:
+    - 'apt-daily.timer'
+    - 'apt-daily-upgrade.timer'
+
+- name: Reload systemctl daemon to apply the new changes
+  when: unattended_upgrades_disabled.changed
+  raw: systemctl daemon-reload
