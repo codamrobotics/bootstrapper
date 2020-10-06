@@ -1,5 +1,9 @@
 #!/bin/zsh
 
+{{ which md5 && MD5=md5  } || { which md5sum && MD5=md5sum }} &>/dev/null
+{{ which sha256 && SHA256=sha256  } || { which sha256sum && SHA256=sha256sum }} &>/dev/null
+{{ which sha512 && SHA512=sha512  } || { which sha512sum && SHA512=sha512sum }} &>/dev/null
+
 function logp()
 { 
 	case "$1" in
