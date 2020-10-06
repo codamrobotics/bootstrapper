@@ -279,11 +279,11 @@ function performActions()
 					target="disable-unattended-upgrades"; logp info "Started running playbook $target...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
-					export NUSER="$ADMIN_USER" NKEY="$ADMIN_KEY" NGROUPS="$ADMIN_GROUPS"
-					target="new_user"; logp info "Started running playbook $target for user '$NUSER'...";
+					target="system"; logp info "Started running playbook $target...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
-					target="system"; logp info "Started running playbook $target...";
+					export NUSER="$ADMIN_USER" NKEY="$ADMIN_KEY" NGROUPS="$ADMIN_GROUPS"
+					target="new_user"; logp info "Started running playbook $target for user '$NUSER'...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
 					target="firmware"; logp info "Started running playbook $target...";
