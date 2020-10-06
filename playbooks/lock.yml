@@ -1,4 +1,6 @@
-- hosts: all
+- name: Lock default user out
+  gather_facts: false
+  hosts: all
   become: true
   tasks:
     - name: Disable password authentication for root

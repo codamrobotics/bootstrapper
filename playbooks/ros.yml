@@ -1,5 +1,6 @@
----
-- hosts: all
+- name: Setup everything ROS related
+  gather_facts: true
+  hosts: all
   become: true
   tasks:
     - name: Install python dependency
@@ -21,11 +22,8 @@
         filename: 'ros-latest'
         update_cache: yes
     
-    - name: Update apt
-      apt: update_cache=yes
-    
     - name: Install core components of ROS
-      apt: name="{{ros_packages.split() }}" state=latest
+      apt: name="{{ros_packages.split()}}" state=latest update_cache=yes
   vars:
     ros_packages: "{{ lookup('env', 'ROS_PACKAGES') }}"
     ros_versions:

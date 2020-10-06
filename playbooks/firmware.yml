@@ -1,6 +1,5 @@
----
-
-- name: "Playbook firmware"
+- name: Set firmware options
+  gather_facts: false
   hosts: all
   become: true
   tasks:
@@ -10,8 +9,10 @@
         state: present
         regexp: '^#?gpu_mem'
         line: 'gpu_mem=16'
+        notify: reboot
+
   handlers:
-    - name: reboot system
+    - name: reboot
       reboot:
         msg: "Reboot initiated by Ansible due to system-updates"
         connect_timeout: 5

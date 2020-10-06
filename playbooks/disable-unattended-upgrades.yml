@@ -1,8 +1,10 @@
 - hosts: all
+  gather_facts: false
   become: true
   tasks:
     - name: Wait for any possibly running unattended upgrades to finish
       raw: systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" --wait /bin/true
+      changed_when: false
     
     - name: Remove package unattended-upgrades
       register: unattended_upgrades_disabled

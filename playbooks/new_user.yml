@@ -1,12 +1,9 @@
-- hosts: all
+- name: Add a user
+  gather_facts: false
+  hosts: all
   become: true
   tasks:
-    - name: Generate password
-      set_fact:
-        user_passwd: "{{ lookup('password', '/dev/null length=15 chars=ascii_letters') }}"
-
     - name: Create new user
-      register: newuser
       user:
         name: "{{user_name}}"
         groups: "{{user_groups.split()}}"
@@ -14,8 +11,7 @@
         state: present
         append: yes
         create_home: true
-        update_password: on_create
-        password: "{{user_passwd.stdout}}"
+        skeleton: "/etc/skel"
 
     - name: Set authorized key for new user
       authorized_key:
@@ -23,6 +19,6 @@
         state: present
         key: "{{user_key}}"
   vars:
-    user_name: "{{ lookup('env', 'RUSER') }}"
-    user_groups: "{{ lookup('env', 'RGROUPS') }}"
-    user_key: "{{ lookup('file', lookup('env','RKEY') + '.pub') }}"
+    user_name: "{{ lookup('env', 'NUSER') }}"
+    user_groups: "{{ lookup('env', 'NGROUPS') }}"
+    user_key: "{{ lookup('file', lookup('env','NKEY') + '.pub') }}"
