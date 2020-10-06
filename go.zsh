@@ -58,9 +58,9 @@ function clean_up()
 	[ ! -f $basedir/.tmp ] || rm -f $basedir/.tmp
 	[ ! -z "$(mount | grep $os_mnt)" ] && logp info "Unmounting $os_mnt" && sudo umount $os_mnt && rmdir $os_mnt
 	case $1 in
-		INT) logp fatal "aborting.." ;;
+		INT) logp fatal "The button of death has entered the room." ;;
 		EXIT) [ $banner = true ] && logp endsection ;;
-		TERM) logp fatal "aborting.." ;;
+		TERM) logp fatal "The program seizes to live." ;;
 	esac
 }
 
@@ -265,7 +265,7 @@ function performActions()
 			[ $# -lt 2 ] && logp usage "$callee bootstrap [raspberry | arduino | arduino-env ] [ARGS]"
 			case $2 in
 				raspberry) #####################################################
-					banner "Arr matey. Bootstrapping raspberry. Strike the earth!"
+					banner "God looked down and agreed with this strategy. Bootstrapping raspberry.."
 
 					getUserInfo $@	|| logp fatal "Failed to get your info"
 
@@ -286,10 +286,10 @@ function performActions()
 						sleep 5 # lock fucks with ssh-server
 					fi
 
-					target="disable-unattended-upgrades"; logp info "Started running playbook $target...";
+					target="system"; logp info "Started running playbook $target...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
-					target="system"; logp info "Started running playbook $target...";
+					target="firewall"; logp info "Started running playbook $target...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
 					export NUSER="$ADMIN_USER" NKEY="$ADMIN_KEY" NGROUPS="$ADMIN_GROUPS"
@@ -456,6 +456,5 @@ function main()
 	handleFlags $@
 	performActions $@
 }
-
 
 main $@

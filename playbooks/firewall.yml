@@ -1,0 +1,44 @@
+- name: Set up firewall
+  gather_facts: false
+  hosts: all
+  become: true
+  tasks:
+    - name: UFW - Allow SSH connections
+      ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: Allow all access from RFC1918 networks to this host
+      ufw:
+        rule: allow
+        src: '{{ item }}'
+      loop:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+      when: debug == "enabled"
+      vars:
+        debug: "{{ lookup('env', 'DEBUG') }}"
+
+    - name: Reject all access from RFC1918 networks to this host
+      ufw:
+        rule: reject
+        src: '{{ item }}'
+      loop:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+      when: debug == "disabled"
+      vars:
+        debug: "{{ lookup('env', 'DEBUG') }}"
+
+    - name: UFW - Deny all other incoming traffic by default
+      ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+    
+    - name: Reload UFW rules
+      ufw:
+        state: reloaded
+      changed_when: false
