@@ -53,7 +53,12 @@
         url: https://git.grml.org/f/grml-etc-core/etc/zsh/zshrc
         dest: /etc/skel/.zshrc
         mode: 0444
-    
+
+    - name: Create .hushlogin in /etc/skel to disable MOTD
+      command: touch /etc/skel/.hushlogin
+      args:
+        creates: /etc/skel/.hushlogin
+
     - name: Download grml .zshrc.local to /etc/skel
       get_url:
         url: https://git.grml.org/f/grml-etc-core/etc/skel/.zshrc
