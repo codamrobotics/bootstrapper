@@ -12,8 +12,6 @@ basedir=$(realpath $(dirname "$0"))
 lib=$basedir/lib
 playbooks=$basedir/playbooks
 playbooks_cpy=$basedir/.playbooks_cpy
-ansibleconfigcache=$basedir/.ansible.config
-ansibleconfigtemplate=$lib/ansible.config.template
 ssh_d=$basedir/.ssh
 configcache=$basedir/.config
 configtemplate=$lib/config.template
@@ -58,7 +56,7 @@ esac
 function clean_up()
 {
 	[ ! -f $basedir/.tmp ] || rm -f $basedir/.tmp
-	[ ! -z "$(mount | grep $os_mnt)" ] && logp info "Unmounting $os_mnt" && sudo umount $os_mnt
+	[ ! -z "$(mount | grep $os_mnt)" ] && logp info "Unmounting $os_mnt" && sudo umount $os_mnt && rmdir $os_mnt
 	case $1 in
 		INT) logp fatal "aborting.." ;;
 		EXIT) [ $banner = true ] && logp endsection ;;
@@ -91,6 +89,15 @@ function banner()
 	logp beginsection	
 }
 
+function prepareAdminEnvironment()
+{
+	[ ! -d $ssh_d ] && mkdir -p $ssh_d
+	if [ ! -f $ADMIN_KEY ]; then
+		logp info "Generating sshkey $ADMIN_KEY"
+		prepareDependency ssh-keygen
+		ssh-keygen -f $ADMIN_KEY -q -N "" || logp fatal "Couldn't generate ansible's bloody key!"
+	fi
+}
 
 function prepareAnsibleEnvironment()
 {
@@ -98,7 +105,7 @@ function prepareAnsibleEnvironment()
 	ANSIBLE_USER=ansible
 	ANSIBLE_KEY=$(realpath $ssh_d)/ansible
 	[ ! -d $ssh_d ] && mkdir -p $ssh_d
-	if ! checkHasAnsibleKey && [ -z ${RKEY+x} ]; then
+	if [ ! -f $ANSIBLE_KEY ]; then
 		logp info "Generating sshkey $ANSIBLE_KEY"
 		prepareDependency ssh-keygen
 		ssh-keygen -f $ANSIBLE_KEY -q -N "" || logp fatal "Couldn't generate ansible's bloody key!"
@@ -120,10 +127,6 @@ function ansibleRunPlaybook
 						$basedir/playbooks/$target.yml 
 }
 
-function readAnsibleConfigCache() { export $(grep -f $ansibleconfigtemplate $ansibleconfigcache) }
-
-function writeAnsibleConfigcache() { typeset | grep -f $ansibleconfigtemplate > $ansibleconfigcache }
-
 function readConfigcache() { export $(grep -f $configtemplate $configcache) }
 
 function writeConfigcache() { env | grep -f $configtemplate > $configcache }
@@ -139,11 +142,9 @@ function getUserInfo()
 					{ [ ! -f $configcache ] || [[ $(wc -l $configcache | sed -e 's/^[[:space:]]*//' | cut -f1 -d\ ) -lt 3 ]] } && logp info "Your attention is required. The experiment requires you to answer truely and wholeheartedly."
 					[ -z "${RHOST+x}" ] && logp question "remote host's network address" && read -r RHOST
 					[ -z "${RPORT+x}" ] && logp question "remote host's port" &&  read -r RPORT
+					[ -z "${RHOSTNAME+x}" ] && logp question "remote host's hostname" &&  read -r RHOSTNAME
 					[ -z "${DEFAULT_USER+x}" ] && logp question "remote host's first login user" && read -r DEFAULT_USER
 					[ -z "${DEFAULT_PASS+x}" ] && logp question "remote host's first login  pass" && read -r DEFAULT_PASS
-					[ -z "${ADMIN_USER+x}" ] && logp question "remote host's preferred admin user" && read -r ADMIN_USER
-					[ -z "${ADMIN_PASS+x}" ] && logp question "remote host's preferred admin password" && read -r ADMIN_PASS
-					[ -z "${ADMIN_KEY+x}" ] && logp question "remote host's preferred admin key" && read -r ADMIN_KEY
 				;;
 				raspberry-microsd)
 					logp info "Your attention is required. The experiment requires you to answer truely and wholeheartedly."
@@ -151,7 +152,7 @@ function getUserInfo()
 						logp info "Block devices : "
 						lsblk -f 
 					fi
-					logp question "Destination microsd card (or other blockdevice)"; read -r blk_dev
+					logp question "Destination microsd card (or other blockdevice)" && read -r blk_dev
 					[ -z "${WIFI_SSID+x}" ] && logp question "Wifi address" && read -r WIFI_SSID
 					[ -z "${WIFI_PASS+x}" ] && logp question "Wifi password" && read -r WIFI_PASS
 				;;
@@ -167,6 +168,11 @@ function getUserInfo()
 				;;
 				*) logp fatal "CRASH @ getUserInfo" ;;
 			esac
+		;;
+		shell)
+			{ [ ! -f $configcache ] || [[ $(wc -l $configcache | sed -e 's/^[[:space:]]*//' | cut -f1 -d\ ) -lt 3 ]] } && logp info "Your attention is required. The experiment requires you to answer truely and wholeheartedly."
+			[ -z "${RHOST+x}" ] && logp question "remote host's network address" && read -r RHOST
+			[ -z "${RPORT+x}" ] && logp question "remote host's port" &&  read -r RPORT
 		;;
 		*) logp fatal "CRASH @ getUserInfo" ;;
 	esac
@@ -234,6 +240,7 @@ function handleFlags()
 		[ "${ARG}" = "bootstrap" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "create" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "dependencies" ] && ACTION="${ARG}" && break
+		[ "${ARG}" = "shell" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "clean" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "reset" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "help" ] && ACTION="${ARG}" && break
@@ -255,6 +262,7 @@ function performActions()
 					checkConnectivity || logp fatal "The network doesn't believe you have connected to it."
 					checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
 					prepareAnsibleEnvironment || logp fatal "The Ansible Environment has denied your request."
+					prepareAdminEnvironment || logp fatal "The Admin Environment has denied your request."
 
 					if ! checkIsManageable $RHOST $RPORT $ANSIBLE_USER "NULL" $ANSIBLE_KEY; then
 						target="ansible_user"; logp info "Started running playbook $target...";
@@ -269,6 +277,10 @@ function performActions()
 					fi
 
 					target="disable-unattended-upgrades"; logp info "Started running playbook $target...";
+					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
+
+					export NUSER="$ADMIN_USER" NKEY="$ADMIN_KEY" NGROUPS="$ADMIN_GROUPS"
+					target="new_user"; logp info "Started running playbook $target for user '$NUSER'...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
 					target="system"; logp info "Started running playbook $target...";
@@ -349,6 +361,13 @@ function performActions()
 				*) logp usage "You have choosen an option that is not on good terms with the Federation." ;;
 			esac
 		;;
+		shell) #################################################################
+			getUserInfo	$@ || logp fatal "Failed to get your info"
+			[ -f $ADMIN_KEY ] || logp fatal "You have to bootstrap the raspberry first, to set the key."
+			{ [ -z "${RPORT+x}" ] || [ -z "${RHOST+x}" ] || [ -z "${ADMIN_USER+x}" ] || [ -z "${ADMIN_KEY+x}" ] } && logp fatal "Crash! Variables not set."
+			ssh -p $RPORT -o PreferredAuthentications=publickey -i $ADMIN_KEY $ADMIN_USER@$RHOST
+			[ $? -eq 130 ] || logp fatal "Shell couldn't be attained."
+		;;
 		dependencies) #######################$##################################
 			prepareAllDependencies || logp fatal "Missing dependencies."
 		;;
@@ -381,6 +400,7 @@ function usage()
 		$callee bootstrap arduino
 		$callee bootstrap arduino-env
 		$callee create accesspoint
+		$callee shell
 		$callee dependencies
 		$callee clean # deletes replaceable data
 		$callee reset # this clears out more than you might want

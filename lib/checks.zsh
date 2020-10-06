@@ -1,7 +1,5 @@
 #!/bin/zsh
 
-function checkHasAnsibleKey() { [ -f $ANSIBLE_KEY ] }
-
 function checkMasterUpdate() {
 		if [ ! -f $refresh ] || [ "$(date +'%d')" != "$(cat $refresh)" ]; then; (date +'%d' > $refresh) && return 0; else; return 1; fi
 }

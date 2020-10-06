@@ -13,7 +13,7 @@ ROS_PACKAGES="	ros-$ROS_RELEASE-ros-base				\
 				ros-$ROS_RELEASE-catkin					\
 				python-rosdep"
 
-SYSTEM_PACKAGES="apt ufw"
+SYSTEM_PACKAGES="apt ufw zsh"
 
 ARDUINO_PACKAGES="arduino-mk avr-gcc"
 ARDUINO_FIRMWARE_LOCATION=$basedir/arduino.hex
@@ -40,3 +40,7 @@ DEPENDENCIES=(	ansible									\
 
 GIT_ORG=autonomousrobotshq
 GIT_LLC=low-level-controller
+
+ADMIN_USER=admin
+ADMIN_GROUPS=wheel
+ADMIN_KEY=$(realpath $ssh_d)/$ADMIN_USER
