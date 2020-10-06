@@ -1,6 +1,35 @@
+---
 - hosts: all
   become: true
-  vars_files:
-    - roles/ros_core/vars/main.yml
-  roles:
-    - ros_core
+  tasks:
+    - name: Install python dependency
+      apt:
+        pkg:
+          - python-simplejson
+          - gpg
+        state: latest
+        update_cache: true
+    
+    - name: Get keys for ros repository
+      apt_key:
+        keyserver: hkp://keyserver.ubuntu.com:80
+        id: 'C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654'
+    
+    - name: Setup repository for ros packages
+      apt_repository:
+        repo: 'deb http://packages.ros.org/ros/ubuntu {{ ansible_lsb.codename }} main'
+        filename: 'ros-latest'
+        update_cache: yes
+    
+    - name: Update apt
+      apt: update_cache=yes
+    
+    - name: Install core components of ROS
+      apt: name="{{ros_packages.split() }}" state=latest
+  vars:
+    ros_packages: "{{ lookup('env', 'ROS_PACKAGES') }}"
+    ros_versions:
+      trusty: indigo
+      xenial: kinetic
+      bionic: melodic
+      focal: noetic

@@ -1,9 +1,28 @@
 - hosts: all
   become: true
-  vars_files:
-    - roles/system/vars/main.yml
   tasks:
-    - set_fact:
-      passwd: "{{gen_passwd}}"
-  roles:
-    - system
+    - name: Generate password
+      set_fact:
+        user_passwd: "{{ lookup('password', '/dev/null length=15 chars=ascii_letters') }}"
+
+    - name: Create new user
+      register: newuser
+      user:
+        name: "{{user_name}}"
+        groups: "{{user_groups.split()}}"
+        shell: /bin/zsh
+        state: present
+        append: yes
+        create_home: true
+        update_password: on_create
+        password: "{{user_passwd.stdout}}"
+
+    - name: Set authorized key for new user
+      authorized_key:
+        user: "{{user_name}}"
+        state: present
+        key: "{{user_key}}"
+  vars:
+    user_name: "{{ lookup('env', 'RUSER') }}"
+    user_groups: "{{ lookup('env', 'RGROUPS') }}"
+    user_key: "{{ lookup('file', lookup('env','RKEY') + '.pub') }}"

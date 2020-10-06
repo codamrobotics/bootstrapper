@@ -1,4 +1,35 @@
 - hosts: all
   become: true
-  roles:
-    - lock
+  tasks:
+    - name: Disable password authentication for root
+      register: sshd_conf
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin prohibit-password'
+    
+    - name: Disable password authentication in general
+      register: sshd_conf
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+    
+    - name: Disable first time login user
+      ignore_errors: yes
+      user:
+        name: "{{ lookup('env', 'DEFAULT_USER') }}"
+        state: absent
+        remove: yes
+    
+    - name: Restart ssh daemon
+      service:
+        name: ssh
+        state: restarted
+        use: service
+      when: sshd_conf.changed
+  handlers:
+    - name: restart sshd
+      service: name=ssh state=restarted
