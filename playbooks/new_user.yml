@@ -18,7 +18,25 @@
         user: "{{user_name}}"
         state: present
         key: "{{user_key}}"
+
+    - name: Set user to automatically load ROS variables (ZSH)
+      become: true
+      become_user: "{{ user_name }}"
+      lineinfile:
+        path: ~/.zshrc
+        regexp: '/opt/ros/{{ros_release}}/setup.zsh$'
+        line: '[ -f /opt/ros/{{ros_release}}/setup.zsh ] && source /opt/ros/{{ros_release}}/setup.zsh'
+
+    - name: Set user to automatically load ROS variables (Bash)
+      become: true
+      become_user: "{{ user_name }}"
+      lineinfile:
+        path: ~/.bashrc
+        regexp: '/opt/ros/{{ros_release}}/setup.bash$'
+        line: '[ -f /opt/ros/{{ros_release}}/setup.bash ] && source /opt/ros/{{ros_release}}/setup.bash'
+
   vars:
     user_name: "{{ lookup('env', 'NUSER') }}"
     user_groups: "{{ lookup('env', 'NGROUPS') }}"
     user_key: "{{ lookup('file', lookup('env','NKEY') + '.pub') }}"
+    ros_release: "{{ lookup('env', 'ROS_RELEASE') }}"

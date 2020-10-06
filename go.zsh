@@ -7,11 +7,11 @@
 set -a
 kernel="$(uname -s)"
 callee=$0
+[ ! -z "${DEBUG+x}" ] && [ "$DEBUG" -eq 1 ] && DEBUG="enabled" || DEBUG="disabled"
 source $(dirname "$0")/lib/core.zsh
 basedir=$(realpath $(dirname "$0"))
 lib=$basedir/lib
 playbooks=$basedir/playbooks
-playbooks_cpy=$basedir/.playbooks_cpy
 ssh_d=$basedir/.ssh
 configcache=$basedir/.config
 configtemplate=$lib/config.template
@@ -102,9 +102,10 @@ function prepareAdminEnvironment()
 function prepareAnsibleEnvironment()
 {
 	prepareDependency ansible
+	[ ! -d $ssh_d ] && mkdir -p $ssh_d
+
 	ANSIBLE_USER=ansible
 	ANSIBLE_KEY=$(realpath $ssh_d)/ansible
-	[ ! -d $ssh_d ] && mkdir -p $ssh_d
 	if [ ! -f $ANSIBLE_KEY ]; then
 		logp info "Generating sshkey $ANSIBLE_KEY"
 		prepareDependency ssh-keygen
@@ -155,6 +156,14 @@ function getUserInfo()
 					logp question "Destination microsd card (or other blockdevice)" && read -r blk_dev
 					[ -z "${WIFI_SSID+x}" ] && logp question "Wifi address" && read -r WIFI_SSID
 					[ -z "${WIFI_PASS+x}" ] && logp question "Wifi password" && read -r WIFI_PASS
+				;;
+				*) logp fatal "CRASH @ getUserInfo" ;;
+			esac
+		;;
+		run)
+			case $2 in
+				playbook)
+					[ -z "${RHOST+x}" ] && logp question "remote host's network address" && read -r RHOST
 				;;
 				*) logp fatal "CRASH @ getUserInfo" ;;
 			esac
@@ -238,6 +247,7 @@ function handleFlags()
 	# read action options
 	for ARG in $@; do
 		[ "${ARG}" = "bootstrap" ] && ACTION="${ARG}" && break
+		[ "${ARG}" = "run" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "create" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "dependencies" ] && ACTION="${ARG}" && break
 		[ "${ARG}" = "shell" ] && ACTION="${ARG}" && break
@@ -348,6 +358,31 @@ function performActions()
 				*) logp usage "You have choosen an option that is not on good terms with the Federation." ;;
 			esac
 		;;
+		run) ###################################################################
+			[ $# -lt 2 ] && logp usage "Run where?"
+			case $2 in
+				playbook)
+					[ $# -lt 3 ] && logp usage "Run what playbook?"
+					[ -f $playbooks/$3.yml ] || logp usage "Playbook $3 not found in $playbooks"
+
+					ANSIBLE_KEY=$(realpath $ssh_d)/ansible
+					ANSIBLE_USER=ansible
+					[ -f $ANSIBLE_KEY ] || logp fatal "No ansible key -> Bootstrap raspberry first."
+
+					banner "Running playbook '$3' in name of the Federation!"
+
+					getUserInfo $@	|| logp fatal "Failed to get your info"
+
+					checkConnectivity || logp fatal "The network doesn't believe you have connected to it."
+					checkIsManageable $RHOST $RPORT $ANSIBLE_USER "NULL" $ANSIBLE_KEY || logp fatal "Host $RHOST is not talkative at the moment."
+					target="$3"; logp info "Started running playbook $target...";
+					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
+
+					logp info "The playbook has come to a conclusion."
+				;;
+				*) logp usage "You have choosen an option that is not on good terms with the Federation." ;;
+			esac
+		;;
 		create) ################################################################
 			case $2 in
 				accesspoint)
@@ -395,16 +430,22 @@ function usage()
 {
 	(logp usage "")
 	cat<<-EOF
-		$callee bootstrap raspberry
-		$callee bootstrap raspberry-microsd
-		$callee bootstrap arduino
-		$callee bootstrap arduino-env
-		$callee create accesspoint
+		$callee bootstrap	raspberry
+		$callee bootstrap	raspberry-microsd
+		$callee bootstrap	arduino
+		$callee bootstrap	arduino-env
+
+		$callee run			playbook
+		$callee create		accesspoint
+
 		$callee shell
+
 		$callee dependencies
+
 		$callee clean # deletes replaceable data
 		$callee reset # this clears out more than you might want
-		$callee help	
+
+		$callee help 
 	EOF
 	exit 1
 }

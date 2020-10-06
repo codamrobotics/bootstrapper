@@ -24,8 +24,10 @@
     
     - name: Install core components of ROS
       apt: name="{{ros_packages.split()}}" state=latest update_cache=yes
+
   vars:
     ros_packages: "{{ lookup('env', 'ROS_PACKAGES') }}"
+    ros_release: "{{ lookup('env', 'ROS_RELEASE') }}"
     ros_versions:
       trusty: indigo
       xenial: kinetic
