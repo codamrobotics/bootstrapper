@@ -25,6 +25,7 @@ os_img_checksum=$os_img.sha256sums
 os_mnt=$basedir/.mnt
 source $lib/checks.zsh || exit 1
 source $lib/image.zsh || exit 1
+source $lib/firmware.zsh || exit 1
 source $lib/create_ap.zsh || exit 1
 
 # internal runtime variables
@@ -259,7 +260,6 @@ function performActions()
 						target="ansible_user"; logp info "Started running playbook $target...";
 						ansibleRunPlaybook $target firstrun || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 						if checkIsManageable $RHOST $RPORT $DEFAULT_USER $DEFAULT_PASS; then
-							logp info "Default user is still present. Injecting ansible inlog and locking default user.."
 							target="lock"; logp info "Started running playbook $target...";
 							ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 						else 
@@ -268,10 +268,13 @@ function performActions()
 						sleep 5 # lock fucks with ssh-server
 					fi
 
-					target="unattended-upgrades"; logp info "Started running playbook $target...";
+					target="disable-unattended-upgrades"; logp info "Started running playbook $target...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
 					target="system"; logp info "Started running playbook $target...";
+					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
+
+					target="firmware"; logp info "Started running playbook $target...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
 					target="ros"; logp info "Started running playbook $target...";
@@ -287,7 +290,8 @@ function performActions()
 					image_write || logp fatal "Failed to write image."
 					logp info "The image was written succesfully." 
 
-					image_prepare_network || logp fatal "Failed to apply network information: enter network info manualy!"
+					firmware_prepare_network || logp fatal "Failed to apply network information: enter network info manualy!"
+					firmware_prepare_bootloader || logp fatal "Failed preparing bootloader."
 					logp info "The network configuration has decided in favour of the Federation. It was a wise decision." 
 
 					[ ! -z "$(mount | grep $os_mnt)" ] && logp info "Unmounting $os_mnt" && { sudo umount $os_mnt || logp warning "Failed unmounting $os_mnt" }

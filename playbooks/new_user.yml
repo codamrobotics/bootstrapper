@@ -1,0 +1,9 @@
+- hosts: all
+  become: true
+  vars_files:
+    - roles/system/vars/main.yml
+  tasks:
+    - set_fact:
+      passwd: "{{gen_passwd}}"
+  roles:
+    - system

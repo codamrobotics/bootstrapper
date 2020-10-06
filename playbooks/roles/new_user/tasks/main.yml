@@ -2,15 +2,46 @@
 - name: Create a new user with sudo privileges
   user:
     name: "{{ lookup('env', 'RUSER') }}"
-    password: "{{ lookup('env', 'RUSER') }}"
+    password: "{{ {{ lookup('env', 'RPASS') }} | password_hash('sha512') }}"
     state: present
     groups: "{{ lookup('env', 'RGROUPS') }}"
     append: true
     create_home: true
     shell: /bin/zsh
+    register: newuser
+
+- set_fact:
+  passwd: "{{gen_passwd}}"
+
+- name: Create New Users
+  vars:
+  gen_passwd: "{{ lookup('password', '/dev/null length=15 chars=ascii_letters') }}"
+  tasks:
+      - set_fact:
+  passwd: "{{gen_passwd}}"
+      - name: Create Users Task
+  user:                       
+  name: "{{usr}}"
+  state: present
+  password: "{{passwd |  password_hash('sha512')}}"
+  shell: /bin/bash
+  uid: "{{uid}}"
+  group: "{{primary_group}}"
+  groups: "{{grps}}"
+  create_home: yes
+      - debug:
+  msg: "{{passwd}}"
 
 - name: Set authorized key for new user
   authorized_key:
     user: "{{ lookup('env', 'RUSER') }}"
     state: present
     key: "{{ lookup('file', lookup('env','RKEY') + '.pub') }}"
+
+- name: Install openssl as requirement 
+  apt: name=openssl update_cache=yes state=latest
+  when: newuser.changed
+
+- name: Generate random password
+  shell: /usr/bin/openssl rand -base64 32 | passwd --stdin "{{ lookup('env', 'RUSER') }}"
+  when: newuser.changed

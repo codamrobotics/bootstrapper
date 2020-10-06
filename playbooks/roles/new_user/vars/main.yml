@@ -1,0 +1,2 @@
+---
+gen_passwd: "{{ lookup('password', '/dev/null length=15 chars=ascii_letters') }}"
