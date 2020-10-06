@@ -29,7 +29,7 @@ function image_checksum_attain()
 function blk_dev_fill_zeros()
 {
 	[ -b $1 ] || logp fatal "'$1' is not a block device!"
-	logp info "Zero'ing out block device $1! (grab a coffee and a smoke)"
+	logp info "Zero'ing out block device $1. Takes a while..."
 	sudo dd if=/dev/zero of=$1 bs=4M count=1250 status=progress && logp info "Syncing last zeros to disk..." && sync || { logp warning "dd is probably bitching about running out of space. No problem." && true }
 }
 
@@ -38,8 +38,7 @@ function image_verify()
 	[ -d $downloads ] || mkdir -p $downloads || logp fatal "Couldn't create downloads folder."
 	if [ -f $os_img ]; then
 		image_checksum_attain
-		prepareDependency sha256sum
-		if ! ( cd $downloads && logp info_nnl "Verifiying image : " && sha256sum -c $os_img_checksum ); then
+		if ! ( cd $downloads && logp info_nnl "Verifying image : " && $SHA256 -c $os_img_checksum ); then
 			logp warning "Incomplete/corrupt image found (checksum) : $os_img, removing..."
 			rm -f $os_img || logp fatal "Couldn't remove image : $os_img"
 		else
@@ -85,46 +84,4 @@ function image_write()
 	else
 		sudo dd if=$os_img of=$blk_dev bs=4M status=progress && logp info "Download complete. Syncing..." && sync || logp fatal "Failed writing $os_img to $blk_dev"
 	fi
-}
-
-function image_prepare_network()
-{
-	[ ! -z ${blk_dev+x} ] && { [ -b "${blk_dev}1" ] && blk_dev_boot="${blk_dev}1" } || { [ -b "${blk_dev}p1" ] && blk_dev_boot="${blk_dev}p1" } || logp fatal "Couldn't find mountable bootpartition for ${blk_dev}"
-	[ -d $os_mnt ] || mkdir -p $os_mnt || logp fatal "Couldn't setup mount directory @ $os_mnt"
-
-	sudo mount "${blk_dev_boot}" $os_mnt || logp fatal "Failed to mount boot partion @ $os_mnt"
-
-	[ ! -z "$WIFI_SSID" ] || logp fatal "Wifi name '$WIFI_SSID' not set!"
-	[ ! -z "$WIFI_PASS" ] || logp fatal "Wifi password '$WIFI_PASS' not set!"
-
-	[ -f $os_mnt/$OS_BOOT_NETWORK_CONFIG ] || logp fatal "Couldn't find network config file @ $os_mnt/$OS_BOOT_NETWORK_CONFIG"
-	[ -z "$(cat $os_mnt/$OS_BOOT_NETWORK_CONFIG | grep -C5 $WIFI_PASS | grep $WIFI_SSID)" ] || { logp info "Wifi is already set!" && return 0 }
-
-	case $OS_DISTRO in
-		ubuntu)
-			p=$(pwd)
-			cd $os_mnt
-			logp info "Inserting network configuration..."
-			sudo sh -c "cat >> $OS_BOOT_NETWORK_CONFIG \
-			<<-EOF
-			# inserted by bootstrapper arrrgh
-			wifis:
-			  wlan0:
-			    dhcp4: true
-			    optional: true
-			    access-points:
-			      $WIFI_SSID:
-			        password: "$WIFI_PASS"
-			EOF" || return 1
-			cd $p
-			sync
-		;;
-		*)
-			logp warning "I don't  have a suitable wifi setup for your chosen distro $OS_DISTRO"
-			sudo umount $os_mnt || logp fatal "Failed to umount boot partion @ $os_mnt"
-			return 1
-		;;
-	esac
-	
-	sudo umount $os_mnt || logp fatal "Failed to umount boot partion @ $os_mnt"
 }

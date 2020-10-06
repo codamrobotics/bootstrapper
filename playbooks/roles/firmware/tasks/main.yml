@@ -1,0 +1,6 @@
+- name: Lower CPU/GPU memory in favour of CPU
+  lineinfile:
+    path: /boot/firmware/usercfg.txt
+    state: present
+    regexp: '^#?gpu_mem'
+    line: 'gpu_mem=16'
