@@ -304,6 +304,9 @@ function performActions()
 					target="ros"; logp info "Started running playbook $target...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
+					target="arduino"; logp info "Started running playbook $target...";
+					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
+
 					logp info "The machine has spoken. Bootstrap complete."
 				;;
 				raspberry-microsd) #############################################

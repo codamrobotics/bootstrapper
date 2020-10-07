@@ -1,0 +1,10 @@
+- name: Setup everything Arduino related
+  gather_facts: false
+  hosts: all
+  become: true
+  tasks:
+    - name: Install core components of Arduino
+      apt: name="{{arduino_packages.split()}}" state=latest update_cache=yes
+
+  vars:
+    arduino_packages: "{{ lookup('env', 'ARDUINO_PACKAGES') }}"
