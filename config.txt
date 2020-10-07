@@ -12,6 +12,8 @@ ROS_PACKAGES="	ros-$ROS_RELEASE-ros-base				\
 				build-essential							\
 				ros-$ROS_RELEASE-catkin					\
 				ros-$ROS_RELEASE-xacro					\
+				ros-$ROS_RELEASE-rosserial				\
+				ros-$ROS_RELEASE-rosserial-arduino		\
 				python-rosdep"
 
 SYSTEM_PACKAGES="apt ufw zsh"

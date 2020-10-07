@@ -39,8 +39,8 @@
 
     - name: Copy catkin workspace over to raspberry
       copy:
-        src: "{{catkin_root}}"/src
-        dest: /opt/catkin_ws/src
+        src: "{{catkin_root}}/src"
+        dest: /opt/catkin_ws/
 
     - name: modify ownership & permissions of a directory (octal mode)
       file:
