@@ -2,6 +2,8 @@
 # All settings
 #
 
+DEBUG=1
+
 ROS_RELEASE=melodic
 
 ROS_PACKAGES="	ros-$ROS_RELEASE-ros-base				\
