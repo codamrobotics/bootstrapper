@@ -77,11 +77,16 @@ function image_write()
 
 	blk_dev_fill_zeros $blk_dev || logp fatal "Failed filling '$blk_dev' with zeros!"
 
-	if [ ! -z "${OS_IMG_COMP_EXT+x}" ]; then
+	comp="$(echo $OS_IMG_LINK | rev | cut -f1 -d. | rev)"
+	if [ "${comp}" = "xz" ]; then
 		prepareDependency xz
 		logp info "Injecting $blk_dev with image '$OS_IMG' ..."
 		xz -T0 -dk < $os_img - | sudo dd of=$blk_dev bs=4M status=progress && logp info "Download complete. Syncing..." && sync || logp fatal "Failed writing $os_img to $blk_dev"
+	elif [ "${comp}" = "zip" ]; then
+		logp info "Injecting $blk_dev with image '$OS_IMG' ..."
+		unzip -p $os_img | sudo dd of=$blk_dev bs=4M status=progress && logp info "Download complete. Syncing..." && sync || logp fatal "Failed writing $os_img to $blk_dev"
 	else
+		logp info "Injecting $blk_dev with image '$OS_IMG' ..."
 		sudo dd if=$os_img of=$blk_dev bs=4M status=progress && logp info "Download complete. Syncing..." && sync || logp fatal "Failed writing $os_img to $blk_dev"
 	fi
 }

@@ -286,6 +286,9 @@ function performActions()
 						sleep 5 # lock fucks with ssh-server
 					fi
 
+					target="disable-unattended-upgrades"; logp info "Started running playbook $target...";
+					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
+
 					target="system"; logp info "Started running playbook $target...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
@@ -293,7 +296,7 @@ function performActions()
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
 					export NUSER="$ADMIN_USER" NKEY="$ADMIN_KEY" NGROUPS="$ADMIN_GROUPS"
-					target="new_user"; logp info "Started running playbook $target for user '$NUSER'...";
+					target="user"; logp info "Started running playbook $target for user '$NUSER'...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
 					target="firmware"; logp info "Started running playbook $target...";
@@ -362,14 +365,14 @@ function performActions()
 			[ $# -lt 2 ] && logp usage "Run where?"
 			case $2 in
 				playbook)
-					[ $# -lt 3 ] && logp usage "Run what playbook?"
+					[ $# -lt 3 ] && logp usage "Run what playbook? \n\n$(cd $playbooks && print -rl -- *.yml(:r)) "
 					[ -f $playbooks/$3.yml ] || logp usage "Playbook $3 not found in $playbooks"
 
 					ANSIBLE_KEY=$(realpath $ssh_d)/ansible
 					ANSIBLE_USER=ansible
 					[ -f $ANSIBLE_KEY ] || logp fatal "No ansible key -> Bootstrap raspberry first."
 
-					banner "Running playbook '$3' in name of the Federation!"
+					banner "Playbook '$3' running.."
 
 					getUserInfo $@	|| logp fatal "Failed to get your info"
 
@@ -435,12 +438,13 @@ function usage()
 		$callee bootstrap	arduino
 		$callee bootstrap	arduino-env
 
-		$callee run			playbook
+		$callee run		playbook		[playbook]
+
 		$callee create		accesspoint
 
 		$callee shell
 
-		$callee dependencies
+		$callee dependencies # pull in dependencies
 
 		$callee clean # deletes replaceable data
 		$callee reset # this clears out more than you might want

@@ -24,9 +24,11 @@ function checkIsManageable()
 {
 	if [ $# -eq 5 ]; then
 		ssh -p $2 -i $5 -o PreferredAuthentications=publickey $3@$1 exit &>/dev/null
+		return $?
 	else
 		prepareDependency sshpass
 		echo "$4" | sshpass ssh -p $2 -o PreferredAuthentications=password -o PubkeyAuthentication=no $3@$1 exit &>/dev/null
+		return $?
 	fi
 }
 

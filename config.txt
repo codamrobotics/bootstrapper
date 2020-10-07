@@ -11,24 +11,35 @@ ROS_PACKAGES="	ros-$ROS_RELEASE-ros-base				\
 				python-wstool							\
 				build-essential							\
 				ros-$ROS_RELEASE-catkin					\
+				ros-$ROS_RELEASE-xacro					\
 				python-rosdep"
 
 SYSTEM_PACKAGES="apt ufw zsh"
 
-ARDUINO_PACKAGES="arduino-mk avr-gcc"
-ARDUINO_FIRMWARE_LOCATION=$basedir/arduino.hex
-
 OS_DISTRO=ubuntu
 OS_RELEASE=bionic
 OS_RELEASE_VERSION=18.04.5
-OS_IMG_COMP_EXT=.xz
-OS_IMG=ubuntu-$OS_RELEASE_VERSION-preinstalled-server-arm64+raspi3.img$OS_IMG_COMP_EXT
-OS_IMG_LINK_BASE=https://cdimage.ubuntu.com/releases/$OS_RELEASE_VERSION/release
 
+OS_IMG=ubuntu-$OS_RELEASE_VERSION-preinstalled-server-arm64+raspi3.img.xz
+OS_IMG_LINK_BASE=https://cdimage.ubuntu.com/releases/$OS_RELEASE_VERSION/release
 OS_IMG_LINK=$OS_IMG_LINK_BASE/$OS_IMG
 OS_IMG_CHECKSUM_LINK=$OS_IMG_LINK_BASE/SHA256SUMS
-
 OS_BOOT_NETWORK_CONFIG=network-config
+
+PYTHON=2
+
+ADMIN_USER=admin
+ADMIN_GROUPS="wheel ros"
+ADMIN_KEY=$(realpath $ssh_d)/$ADMIN_USER
+
+CATKIN_ROOT=$basedir/catkin_ws
+
+GIT_ORG=autonomousrobotshq
+GIT_LLC=low-level-controller
+
+ARDUINO_PACKAGES="arduino-mk avr-gcc"
+ARDUINO_FIRMWARE_LOCATION=$basedir/arduino.hex
+
 
 # build dependencies
 DEPENDENCIES=(	ansible									\
@@ -38,9 +49,3 @@ DEPENDENCIES=(	ansible									\
 				ssh-keygen								\
 				sshpass)								
 
-GIT_ORG=autonomousrobotshq
-GIT_LLC=low-level-controller
-
-ADMIN_USER=admin
-ADMIN_GROUPS=wheel
-ADMIN_KEY=$(realpath $ssh_d)/$ADMIN_USER

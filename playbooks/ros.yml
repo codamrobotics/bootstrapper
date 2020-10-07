@@ -25,6 +25,30 @@
     - name: Install core components of ROS
       apt: name="{{ros_packages.split()}}" state=latest update_cache=yes
 
+    - name: Ensure group "ros" exists
+      group:
+        name: ros
+        state: present
+
+    - name: Create catkin workspace
+      file:
+        path: /opt/catkin_ws/src
+        state: directory
+        group: ros
+        mode: '0775'
+
+    - name: Copy catkin workspace over to raspberry
+      copy:
+        src: "{{catkin_root}}"/src
+        dest: /opt/catkin_ws/src
+
+    - name: modify ownership & permissions of a directory (octal mode)
+      file:
+        path: "{{catkin_root}}"
+        state: directory
+        owner: "root"
+        group: "ros"
+
   vars:
     ros_packages: "{{ lookup('env', 'ROS_PACKAGES') }}"
     ros_release: "{{ lookup('env', 'ROS_RELEASE') }}"
@@ -33,3 +57,4 @@
       xenial: kinetic
       bionic: melodic
       focal: noetic
+    catkin_root: "{{ lookup('env', 'CATKIN_ROOT') }}"

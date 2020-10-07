@@ -1,0 +1,81 @@
+- name: Add a user
+  gather_facts: false
+  hosts: all
+  become: true
+  tasks:
+    - name: Create user groups
+      group:
+        name: "{{item}}"
+        state: present
+      loop: "{{user_groups.split()}}"
+
+    - name: Create new user
+      user:
+        name: "{{user_name}}"
+        groups: "{{user_groups.split()}}"
+        shell: /bin/zsh
+        state: present
+        append: yes
+        create_home: true
+        skeleton: "/etc/skel"
+
+    - name: Set authorized key for new user
+      authorized_key:
+        user: "{{user_name}}"
+        state: present
+        key: "{{user_key}}"
+
+    - name: Set user to automatically load ROS variables (zsh)
+      become: true
+      become_user: "{{ user_name }}"
+      lineinfile:
+        path: ~/.zshrc
+        regexp: '/opt/ros/{{ros_release}}/setup.zsh$'
+        line: '[ -f /opt/ros/{{ros_release}}/setup.zsh ] && source /opt/ros/{{ros_release}}/setup.zsh'
+
+    - name: Set user to automatically load Catkin compiled ros packages (zsh)
+      become: true
+      become_user: "{{ user_name }}"
+      lineinfile:
+        path: ~/.zshrc
+        regexp: '/opt/catkin_ws/install/setup.zsh$'
+        line: '[ -f /opt/catkin_ws/install/setup.zsh ] && source /opt/catkin_ws/install/setup.zsh'
+
+    - name: Set user to automatically load ROS variables (bash)
+      become: true
+      become_user: "{{ user_name }}"
+      lineinfile:
+        path: ~/.bashrc
+        regexp: '/opt/ros/{{ros_release}}/setup.bash$'
+        line: '[ -f /opt/ros/{{ros_release}}/setup.bash ] && source /opt/ros/{{ros_release}}/setup.bash'
+
+    - name: Set user to automatically load Catkin compiled ros packages (bash)
+      become: true
+      become_user: "{{ user_name }}"
+      lineinfile:
+        path: ~/.bashrc
+        regexp: '/opt/catkin_ws/install/setup.bash$'
+        line: '[ -f /opt/catkin_ws/install/setup.bash ] && source /opt/catkin_ws/install/setup.bash'
+
+    - name: Set alias for user to force the right python version for catkin_make (bash)
+      become: true
+      become_user: "{{ user_name }}"
+      lineinfile:
+        path: ~/.bashrc
+        regexp: '^alias catkin_make=.*'
+        line: "alias catkin_make='catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python{{python}}'"
+
+    - name: Set alias for user to force the right python version for catkin_make (zsh)
+      become: true
+      become_user: "{{ user_name }}"
+      lineinfile:
+        path: ~/.zshrc
+        regexp: '^alias catkin_make=.*'
+        line: "alias catkin_make='catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python{{python}}'"
+
+  vars:
+    user_name: "{{ lookup('env', 'NUSER') }}"
+    user_groups: "{{ lookup('env', 'NGROUPS') }}"
+    user_key: "{{ lookup('file', lookup('env','NKEY') + '.pub') }}"
+    ros_release: "{{ lookup('env', 'ROS_RELEASE') }}"
+    python: "{{ lookup('env', 'PYTHON') }}"

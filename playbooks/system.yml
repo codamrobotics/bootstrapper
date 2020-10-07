@@ -55,9 +55,9 @@
         mode: 0444
 
     - name: Create .hushlogin in /etc/skel to disable MOTD
-      command: touch /etc/skel/.hushlogin
-      args:
-        creates: /etc/skel/.hushlogin
+      file:
+        path: /etc/skel/.hushlogin
+        state: touch
 
     - name: Download grml .zshrc.local to /etc/skel
       get_url:
