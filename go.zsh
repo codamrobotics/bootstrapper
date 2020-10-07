@@ -7,7 +7,6 @@
 set -a
 kernel="$(uname -s)"
 callee=$0
-[ ! -z "${DEBUG+x}" ] && [ "$DEBUG" -eq 1 ] && DEBUG="enabled" || DEBUG="disabled"
 source $(dirname "$0")/lib/core.zsh
 basedir=$(realpath $(dirname "$0"))
 lib=$basedir/lib
@@ -16,7 +15,6 @@ ssh_d=$basedir/.ssh
 configcache=$basedir/.config
 configtemplate=$lib/config.template
 refresh=$basedir/.refresh
-source $basedir/config.txt || exit 1
 downloads=$basedir/downloads
 os_img=$downloads/$OS_IMG
 os_img_checksum=$os_img.sha256sums
@@ -25,6 +23,7 @@ source $lib/checks.zsh || exit 1
 source $lib/image.zsh || exit 1
 source $lib/firmware.zsh || exit 1
 source $lib/create_ap.zsh || exit 1
+source $basedir/config.txt || exit 1
 
 # internal runtime variables
 banner=false

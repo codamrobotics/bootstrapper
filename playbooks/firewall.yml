@@ -16,7 +16,7 @@
         - 10.0.0.0/8
         - 172.16.0.0/12
         - 192.168.0.0/16
-      when: debug == "enabled"
+      when: debug == "1"
       vars:
         debug: "{{ lookup('env', 'DEBUG') }}"
 
@@ -28,7 +28,7 @@
         - 10.0.0.0/8
         - 172.16.0.0/12
         - 192.168.0.0/16
-      when: debug == "disabled"
+      when: debug == "0"
       vars:
         debug: "{{ lookup('env', 'DEBUG') }}"
 

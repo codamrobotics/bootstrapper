@@ -58,6 +58,8 @@
       file:
         path: /etc/skel/.hushlogin
         state: touch
+        access_time: preserve
+        modification_time: preserve
 
     - name: Download grml .zshrc.local to /etc/skel
       get_url:
