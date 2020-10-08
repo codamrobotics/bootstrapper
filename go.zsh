@@ -14,6 +14,7 @@ playbooks=$basedir/playbooks
 ssh_d=$basedir/.ssh
 configcache=$basedir/.config
 configtemplate=$lib/config.template
+bootstrapper_cfg=$lib/bootstrapper_cfg.template
 refresh=$basedir/.refresh
 downloads=$basedir/downloads
 os_img=$downloads/$OS_IMG
@@ -33,6 +34,7 @@ case $kernel in
 	Darwin)
 		alias PKG_UPDATE="brew update"
 		alias PKG_INSTALL="brew install"
+		alias PKG_LIST="brew list"
 	;;
 	Linux)
 		os_flavour=$(cat /etc/os-release | grep ID_LIKE | cut -d= -f2)
@@ -40,10 +42,12 @@ case $kernel in
 			arch)
 				alias PKG_UPDATE="yay -Sy"
 				alias PKG_INSTALL="yay -S"
+				alias PKG_LIST="yay -Q"
 			;;
 			ubuntu)
 				alias PKG_UPDATE="sudo apt-get update"
 				alias PKG_INSTALL="sudo apt-get install -y"
+				alias PKG_LIST="sudo dpkg -l"
 			;;
 			*) logp usage "You have choosen an operating system that is not on good terms with the Federation." ;;
 		esac
@@ -156,6 +160,11 @@ function getUserInfo()
 					[ -z "${WIFI_SSID+x}" ] && logp question "Wifi address" && read -r WIFI_SSID
 					[ -z "${WIFI_PASS+x}" ] && logp question "Wifi password" && read -r WIFI_PASS
 				;;
+				arduino)
+					[ -z "${RHOST+x}" ] && logp question "remote host's network address" && read -r RHOST
+					[ -z "${RPORT+x}" ] && logp question "remote host's port" &&  read -r RPORT
+					[ -z "${RHOSTNAME+x}" ] && logp question "remote host's hostname" &&  read -r RHOSTNAME
+				;;
 				*) logp fatal "CRASH @ getUserInfo" ;;
 			esac
 		;;
@@ -191,7 +200,7 @@ function getUserInfo()
 function prepareDependency()
 {
 	dep=$1
-	if ! command -v $dep &> /dev/null; then
+	if ! command -v $dep &>/dev/null && ! PKG_LIST $dep &>/dev/null; then
 		logp info "Dependency '$dep' is missing. Attempting to install:"
 		PKG_UPDATE || logp fatal "Couldn't update from repositories"
 		PKG_INSTALL $dep || logp fatal "Couldn't install dependency '$dep'!"
@@ -261,7 +270,7 @@ function performActions()
 {
 	case $ACTION in
 		bootstrap) #############################################################
-			[ $# -lt 2 ] && logp usage "$callee bootstrap [raspberry | arduino | arduino-env ] [ARGS]"
+			[ $# -lt 2 ] && logp usage "Bootstrap what?"
 			case $2 in
 				raspberry) #####################################################
 					banner "God looked down and agreed with this strategy. Bootstrapping raspberry.."
@@ -307,6 +316,9 @@ function performActions()
 					target="arduino"; logp info "Started running playbook $target...";
 					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
 
+					target="bootstrapper_cfg"; logp info "Started running playbook $target...";
+					ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
+
 					logp info "The machine has spoken. Bootstrap complete."
 				;;
 				raspberry-microsd) #############################################
@@ -328,37 +340,25 @@ function performActions()
 				arduino) #######################################################
 					banner "Arduino here to bootstrap your spine."
 
-					[ ! -f $ARDUINO_FIRMWARE_LOCATION ] && logp fatal "Store the compiled arduino firmware file @ $ARDUINO_FIRMWARE_LOCATION"
+					[ $# -gt 2 ] && [ ! -f $3 ] && logp fatal "Optional last argument should point to firmware file!"
+					[ ! -f $ARDUINO_HEX ] && logp fatal "Store the compiled arduino firmware file @ $ARDUINO_HEX"
 
 					getUserInfo	$@ || logp fatal "Failed to get your info"
 
-					logp question "Local or Remote ? -> type L or R : "; read -r response
-					if [ "$response" = "L" ]; then
-						logp info "Attempting to flash locally.."
-
-					elif [ "$response" = "R" ]; then
-						logp info "Attempting to flash remotely.."
-						checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
-						
-						target="arduino_upload"; logp info "Started running playbook $target...";
-						ansibleRunPlaybook $target || logp fatal "The machine is still resisting. $target rules have failed to comply!"
-
-					else
-						logp fatal "bekijk 't maar"
-					fi
+					[ -f $ADMIN_KEY ] || logp fatal "No admin key -> Bootstrap raspberry first."
+					checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
+					checkIsManageable $RHOST $RPORT $ADMIN_USER "NULL" $ADMIN_KEY || logp fatal "Host $RHOST is not talkative at the moment."
+					prepareDependency scp
+					logp info "Copying over '$ARDUINO_HEX'"
+					scp -i $ADMIN_KEY -P $RPORT $ARDUINO_HEX $ADMIN_USER@$RHOST:~/upload/ || logp fatal "Couldn't upload '$ARDUINO_HEX'"
+					logp info "Attempting to flash remotely.."
+					ssh -i $ADMIN_KEY -p $RPORT $ADMIN_USER@$RHOST 'sudo zsh -s' < $lib/arduino_flash.zsh || logp fatal "More luck next time."
 				;;
 				arduino-env) ###################################################
-					[ ! $# -eq 3 ] && logp usage "$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]"
-					if checkIsReachable "$(echo $3 | cut -d: -f1)"; then
-						which rsync || logp fatal "Cannot copy to/from host without rsync installed!"
-						rsync -Wav --progress $3 || logp fatal "Couldn't copy arduino env over"
-					elif [ -d $3 ] || mkdir -p $3; then
-						dir=$3
-						PKG_INSTALL $ARDUINO_PACKAGES || logp fatal "Couldn't install Arduino packages!"
-						git clone git@github.com:$GIT_ORG/$GIT_LLC.git $dir || logp fatal "Couldn't clone Arduino-env!"
-					else
-						logp usage "$callee bootstrap arduino-env [[HOST:DIRECTORY] | [DIRECTORY]]";
-					fi
+					[ $# -eq 3 ] || logp usage "$callee bootstrap arduino-env [DIRECTORY]]"
+					mkdir -p $3 && logp info "Created '$3'" || logp fatal "Failed to create directory '$3'!"
+					for package in "${ARDUINO_PACKAGES[@]}"; do prepareDependency $package; done
+					git clone git@github.com:$GIT_ORG/$GIT_LLC.git $3 || logp fatal "Couldn't clone Arduino-env!"
 				;;
 				*) logp usage "You have choosen an option that is not on good terms with the Federation." ;;
 			esac
@@ -374,7 +374,7 @@ function performActions()
 					ANSIBLE_USER=ansible
 					[ -f $ANSIBLE_KEY ] || logp fatal "No ansible key -> Bootstrap raspberry first."
 
-					banner "Playbook '$3' running.."
+					banner "Playbook '$3' is running.."
 
 					getUserInfo $@	|| logp fatal "Failed to get your info"
 
@@ -412,7 +412,7 @@ function performActions()
 			prepareAllDependencies || logp fatal "Missing dependencies."
 		;;
 		clean) #################################################################
-			[ -f $ARDUINO_FIRMWARE_LOCATION ] && rm -f $ARDUINO_FIRMWARE_LOCATION && logp info "Cleaned configcache '$ARDUINO_FIRMWARE_LOCATION'"
+			[ -f $ARDUINO_HEX ] && rm -f $ARDUINO_HEX && logp info "Cleaned configcache '$ARDUINO_HEX'"
 			[ -d $downloads ] && rm -rf $downloads && logp info "Cleaned out downloads folder : $downloads."
 		;;
 		reset) #################################################################
@@ -421,7 +421,7 @@ function performActions()
 				[ -d "$ssh" ] && rm -rf $ssh && logp info "Cleaned ssh folder with keys '$ssh'"
 				[ -f $refresh ] && rm -f $refresh && logp info "Cleaned git update refresh file '$refresh'"
 				[ -f $configcache ] && rm -f $configcache && logp info "Cleaned configcache '$configcache'"
-				[ -f $ARDUINO_FIRMWARE_LOCATION ] && rm -f $ARDUINO_FIRMWARE_LOCATION && logp info "Cleaned configcache '$ARDUINO_FIRMWARE_LOCATION'"
+				[ -f $ARDUINO_HEX ] && rm -f $ARDUINO_HEX && logp info "Cleaned configcache '$ARDUINO_HEX'"
 				[ -d $downloads ] && rm -rf $downloads && logp info "Cleaned out downloads folder : $downloads."
 			else	logp fatal "Probably a wise decision."; fi
 		;;
@@ -438,6 +438,8 @@ function usage()
 		$callee bootstrap	raspberry
 		$callee bootstrap	raspberry-microsd
 		$callee bootstrap	arduino
+		$callee bootstrap	arduino			[.hex file]
+
 		$callee bootstrap	arduino-env
 
 		$callee run		playbook		[playbook]

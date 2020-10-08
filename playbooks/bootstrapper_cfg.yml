@@ -1,0 +1,28 @@
+- name: Setup remote config for bootstrapping
+  gather_facts: false
+  hosts: all
+  become: true
+  tasks:
+    - name: Create remote config folder
+      file:
+        path: "/home/{{admin_user}}/upload"
+        state: directory
+        owner: "{{admin_user}}"
+        group: "{{admin_user}}"
+        mode: '0700'
+
+    - name: Copy config file over to remote
+      copy:
+        src: "{{bootstrapper_cfg}}"
+        dest: /opt/bootstrapper.cfg
+
+    - name: Set admin user in config file
+      lineinfile:
+        path: /opt/bootstrapper.cfg
+        state: present
+        regexp: '^#?ADMIN_USER='
+        line: "ADMIN_USER={{admin_user}}"
+
+  vars:
+    bootstrapper_cfg: "{{ lookup('env', 'bootstrapper_cfg') }}"
+    admin_user: "{{ lookup('env', 'ADMIN_USER') }}"

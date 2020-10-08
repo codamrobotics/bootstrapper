@@ -41,8 +41,10 @@ CATKIN_ROOT=$basedir/catkin_ws
 GIT_ORG=autonomousrobotshq
 GIT_LLC=low-level-controller
 
-ARDUINO_PACKAGES="arduino-mk avrdude arduino"
-ARDUINO_FIRMWARE_LOCATION=$basedir/arduino.hex
+ARDUINO_PACKAGES=(	arduino-mk							\
+					avrdude								\
+					arduino)
+ARDUINO_HEX=$basedir/arduino.hex
 
 # build dependencies
 DEPENDENCIES=(	ansible									\
