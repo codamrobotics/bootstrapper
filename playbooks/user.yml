@@ -39,7 +39,7 @@
       lineinfile:
         path: ~/.zshrc
         regexp: '/opt/catkin_ws/install/setup.zsh$'
-        line: '[ -f /opt/catkin_ws/install/setup.zsh ] && source /opt/catkin_ws/install/setup.zsh'
+        line: '[ -f /opt/workspace/catkin_ws/install/setup.zsh ] && source /opt/workspace/catkin_ws/install/setup.zsh'
 
     - name: Set user to automatically load ROS variables (bash)
       become: true
@@ -55,7 +55,7 @@
       lineinfile:
         path: ~/.bashrc
         regexp: '/opt/catkin_ws/install/setup.bash$'
-        line: '[ -f /opt/catkin_ws/install/setup.bash ] && source /opt/catkin_ws/install/setup.bash'
+        line: '[ -f /opt/workspace/catkin_ws/install/setup.bash ] && source /opt/workspace/catkin_ws/install/setup.bash'
 
     - name: Set alias for user to force the right python version for catkin_make (bash)
       become: true

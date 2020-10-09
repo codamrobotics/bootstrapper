@@ -11,12 +11,14 @@ ROS_PACKAGES="	ros-$ROS_RELEASE-ros-base				\
 				python-rosinstall						\
 				python-rosinstall-generator				\
 				python-wstool							\
-				build-essential							\
 				ros-$ROS_RELEASE-catkin					\
 				ros-$ROS_RELEASE-xacro					\
+				ros-$ROS_RELEASE-robot-upstart			\
 				ros-$ROS_RELEASE-rosserial				\
 				ros-$ROS_RELEASE-rosserial-arduino		\
-				python-rosdep"
+				python-rosdep							\
+				build-essential							\
+				cmake"
 
 SYSTEM_PACKAGES="apt ufw zsh"
 
@@ -34,23 +36,22 @@ PYTHON=2
 
 ADMIN_USER=admin
 ADMIN_GROUPS="wheel ros"
-ADMIN_KEY=$(realpath $ssh_d)/$ADMIN_USER
 
-CATKIN_ROOT=$basedir/catkin_ws
+WORKSPACE=$basedir/workspace
 
 GIT_ORG=autonomousrobotshq
 GIT_LLC=low-level-controller
 
-ARDUINO_PACKAGES=(	arduino-mk							\
+ARDUINO_PACKAGES="	arduino-mk							\
 					avrdude								\
-					arduino)
+					arduino"
 ARDUINO_HEX=$basedir/arduino.hex
 
 # build dependencies
-DEPENDENCIES=(	ansible									\
+DEPENDENCIES="	ansible									\
 				git										\
 				ssh										\
 				ssh-copy-id								\
 				ssh-keygen								\
-				sshpass)								
+				sshpass"
 

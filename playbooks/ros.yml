@@ -25,29 +25,47 @@
     - name: Install core components of ROS
       apt: name="{{ros_packages.split()}}" state=latest update_cache=yes
 
+    - name: Rosdep init
+      shell: rosdep init
+      args:
+        creates: /etc/ros/rosdep/sources.list.d/20-default.list
+
+    - name: Rosdep update
+      become: true
+      become_user: "{{admin_user}}"
+      shell: rosdep update
+      changed_when: false
+
     - name: Ensure group "ros" exists
       group:
         name: ros
         state: present
 
+    - name: Create remote workspace
+      file:
+        path: /opt/workspace
+        state: directory
+        owner: "{{admin_user}}"
+        group: ros
+
+    - name: Copy workspace over to raspberry
+      copy:
+        src: "{{workspace}}/"
+        dest: /opt/workspace
+
     - name: Create catkin workspace
       file:
-        path: /opt/catkin_ws/src
+        path: /opt/workspace/catkin_ws/src
         state: directory
-        group: ros
-        mode: '0775'
 
-    - name: Copy catkin workspace over to raspberry
-      copy:
-        src: "{{catkin_root}}/src"
-        dest: /opt/catkin_ws/
-
-    - name: modify ownership & permissions of a directory (octal mode)
+    - name: Modify ownership & permissions of remote workspace
       file:
-        path: "{{catkin_root}}"
+        path: /opt/workspace
         state: directory
-        owner: "root"
-        group: "ros"
+        owner: "{{admin_user}}"
+        group: ros
+        mode: u=rwX,g=rX,o=rX
+        recurse: yes
 
   vars:
     ros_packages: "{{ lookup('env', 'ROS_PACKAGES') }}"
@@ -57,4 +75,5 @@
       xenial: kinetic
       bionic: melodic
       focal: noetic
-    catkin_root: "{{ lookup('env', 'CATKIN_ROOT') }}"
+    workspace: "{{ lookup('env', 'WORKSPACE') }}"
+    admin_user: "{{ lookup('env', 'ADMIN_USER') }}"

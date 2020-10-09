@@ -9,6 +9,7 @@ kernel="$(uname -s)"
 callee=$0
 source $(dirname "$0")/lib/core.zsh
 basedir=$(realpath $(dirname "$0"))
+source $basedir/config.txt || exit 1
 lib=$basedir/lib
 playbooks=$basedir/playbooks
 ssh_d=$basedir/.ssh
@@ -24,7 +25,6 @@ source $lib/checks.zsh || exit 1
 source $lib/image.zsh || exit 1
 source $lib/firmware.zsh || exit 1
 source $lib/create_ap.zsh || exit 1
-source $basedir/config.txt || exit 1
 
 # internal runtime variables
 banner=false
@@ -95,7 +95,8 @@ function banner()
 function prepareAdminEnvironment()
 {
 	[ ! -d $ssh_d ] && mkdir -p $ssh_d
-	if [ ! -f $ADMIN_KEY ]; then
+	ADMIN_KEY=$(realpath $ssh_d)/$ADMIN_USER
+	if [ ! -f $ADMIN_KEY ] && [ "$ACTION" = "bootstrap" ]; then
 		logp info "Generating sshkey $ADMIN_KEY"
 		prepareDependency ssh-keygen
 		ssh-keygen -f $ADMIN_KEY -q -N "" || logp fatal "Couldn't generate ansible's bloody key!"
@@ -109,7 +110,7 @@ function prepareAnsibleEnvironment()
 
 	ANSIBLE_USER=ansible
 	ANSIBLE_KEY=$(realpath $ssh_d)/ansible
-	if [ ! -f $ANSIBLE_KEY ]; then
+	if [ ! -f $ANSIBLE_KEY ] && [ "$ACTION" = "bootstrap" ]; then
 		logp info "Generating sshkey $ANSIBLE_KEY"
 		prepareDependency ssh-keygen
 		ssh-keygen -f $ANSIBLE_KEY -q -N "" || logp fatal "Couldn't generate ansible's bloody key!"
@@ -210,7 +211,8 @@ function prepareDependency()
 function prepareAllDependencies()
 {
 	U=0
-	for dep in "${DEPENDENCIES[@]}"
+	DEPENDENCIES_A=($(echo $DEPENDENCIES | tr '\t' ' '))
+	for dep in "${DEPENDENCIES_A[@]}"
 	do
 		if ! command -v $dep &> /dev/null; then
 			if [ $U -eq 0 ]; then
@@ -345,7 +347,9 @@ function performActions()
 
 					getUserInfo	$@ || logp fatal "Failed to get your info"
 
+					prepareAdminEnvironment || logp fatal "The Admin Environment has denied your request."
 					[ -f $ADMIN_KEY ] || logp fatal "No admin key -> Bootstrap raspberry first."
+
 					checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
 					checkIsManageable $RHOST $RPORT $ADMIN_USER "NULL" $ADMIN_KEY || logp fatal "Host $RHOST is not talkative at the moment."
 					prepareDependency scp
@@ -378,6 +382,7 @@ function performActions()
 
 					getUserInfo $@	|| logp fatal "Failed to get your info"
 
+					prepareAdminEnvironment || logp fatal "The Admin Environment has denied your request."
 					checkConnectivity || logp fatal "The network doesn't believe you have connected to it."
 					checkIsManageable $RHOST $RPORT $ANSIBLE_USER "NULL" $ANSIBLE_KEY || logp fatal "Host $RHOST is not talkative at the moment."
 					target="$3"; logp info "Started running playbook $target...";
@@ -404,6 +409,7 @@ function performActions()
 		shell) #################################################################
 			getUserInfo	$@ || logp fatal "Failed to get your info"
 			[ -f $ADMIN_KEY ] || logp fatal "You have to bootstrap the raspberry first, to set the key."
+			prepareAdminEnvironment || logp fatal "The Admin Environment has denied your request."
 			{ [ -z "${RPORT+x}" ] || [ -z "${RHOST+x}" ] || [ -z "${ADMIN_USER+x}" ] || [ -z "${ADMIN_KEY+x}" ] } && logp fatal "Crash! Variables not set."
 			ssh -p $RPORT -o PreferredAuthentications=publickey -i $ADMIN_KEY $ADMIN_USER@$RHOST
 			[ $? -eq 130 ] || logp fatal "Shell couldn't be attained."
