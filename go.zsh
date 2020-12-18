@@ -183,6 +183,7 @@ function getUserInfo()
 					[ -z "${WIFI_SSID+x}" ] && logp question "Wifi address" && read -r WIFI_SSID
 					[ -z "${WIFI_PASS+x}" ] && logp question "Wifi password" && read -r WIFI_PASS
 					[ -z "${WIFI_DEV+x}" ] && { which ifconfig && ifconfig || true } && logp question "Wifi device" && read -r WIFI_DEV
+					[ -z "${UPLINK_DEV+x}" ] && { which ifconfig && ifconfig || true } && logp question "Uplink device" && read -r UPLINK_DEV
 				;;
 				*) logp fatal "CRASH @ getUserInfo" ;;
 			esac
