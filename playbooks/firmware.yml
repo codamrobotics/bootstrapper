@@ -6,7 +6,7 @@
     - name: Lower CPU/GPU memory in favour of CPU
       notify: reboot
       lineinfile:
-        path: /boot/firmware/usercfg.txt
+        path: /boot/firmware/config.txt
         state: present
         regexp: '^#?gpu_mem'
         line: 'gpu_mem=16'
