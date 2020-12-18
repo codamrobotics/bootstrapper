@@ -4,35 +4,27 @@
 
 DEBUG=1
 
-ROS_RELEASE=melodic
+ROS_RELEASE=noetic
 
 ROS_PACKAGES="	ros-$ROS_RELEASE-ros-base				\
-				python-rosdep							\
-				python-rosinstall						\
-				python-rosinstall-generator				\
-				python-wstool							\
 				ros-$ROS_RELEASE-catkin					\
-				ros-$ROS_RELEASE-xacro					\
-				ros-$ROS_RELEASE-robot-upstart			\
+				python3-rosdep							\
 				ros-$ROS_RELEASE-rosserial				\
-				ros-$ROS_RELEASE-rosserial-arduino		\
-				python-rosdep							\
-				build-essential							\
-				cmake"
+				ros-$ROS_RELEASE-rosserial-arduino		"
 
-SYSTEM_PACKAGES="apt ufw zsh"
+SYSTEM_PACKAGES="apt ufw zsh acl build-essential cmake"
 
 OS_DISTRO=ubuntu
-OS_RELEASE=bionic
-OS_RELEASE_VERSION=18.04.5
+OS_RELEASE=focal
+OS_RELEASE_VERSION=20.04.1
 
-OS_IMG=ubuntu-$OS_RELEASE_VERSION-preinstalled-server-arm64+raspi3.img.xz
+OS_IMG=ubuntu-$OS_RELEASE_VERSION-preinstalled-server-arm64+raspi.img.xz
 OS_IMG_LINK_BASE=https://cdimage.ubuntu.com/releases/$OS_RELEASE_VERSION/release
 OS_IMG_LINK=$OS_IMG_LINK_BASE/$OS_IMG
 OS_IMG_CHECKSUM_LINK=$OS_IMG_LINK_BASE/SHA256SUMS
 OS_BOOT_NETWORK_CONFIG=network-config
 
-PYTHON=2
+PYTHON=3
 
 ADMIN_USER=admin
 ADMIN_GROUPS="wheel ros"
