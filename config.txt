@@ -6,10 +6,14 @@ DEBUG=1
 
 ROS_RELEASE=noetic
 
+
+# libsdl stuff is needed for keyboard interactions
 ROS_PACKAGES="	ros-$ROS_RELEASE-ros-base				\
 				ros-$ROS_RELEASE-catkin					\
 				python3-rosdep							\
 				ros-$ROS_RELEASE-rosserial				\
+				libsdl-image1.2-dev						\
+				libsdl-dev								\
 				ros-$ROS_RELEASE-rosserial-arduino		"
 
 SYSTEM_PACKAGES="apt ufw zsh acl build-essential cmake"
