@@ -44,7 +44,7 @@ case $kernel in
 				alias PKG_INSTALL="yay -S"
 				alias PKG_LIST="yay -Q"
 			;;
-			ubuntu)
+			debian)
 				alias PKG_UPDATE="sudo apt-get update"
 				alias PKG_INSTALL="sudo apt-get install -y"
 				alias PKG_LIST="sudo dpkg -l"
