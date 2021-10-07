@@ -397,12 +397,13 @@ function performActions()
 		create) ################################################################
 			case $2 in
 				accesspoint)
-					[ "$kernel" = "Linux" ] && [ "$os_flavour" = "arch" ] || logp fatal "This function depends on AUR package create_ap. Since you are not running a flavour of Arch Linux I canno't help you. Setup a wifi accespoint manually."
-					which create_ap || which yay || logp fatal "I don't know how to get create_ap from the AUR. Do you have 'yay' installed? If not install it and run again, or get a hold of 'create_ap' yourself."
+                    # TODO: remove the following when a proper fix for os dependencies is found
+					#[ "$kernel" = "Linux" ] && [ "$os_flavour" = "arch" ] || logp fatal "This function depends on AUR package create_ap. Since you are not running a flavour of Arch Linux I canno't help you. Setup a wifi accespoint manually."
+					#which create_ap || which yay || logp fatal "I don't know how to get create_ap from the AUR. Do you have 'yay' installed? If not install it and run again, or get a hold of 'create_ap' yourself."
 
 					banner "The Federation has sent you an accesspoint."
 					getUserInfo	$@ || logp fatal "Failed to get your info"
-					create_accesspoint || logp fatal "Killed."
+					create_accesspoint || logp fatal "Killed or failed."
 				;;
 				*) logp usage "You have choosen an option that is not on good terms with the Federation." ;;
 			esac
