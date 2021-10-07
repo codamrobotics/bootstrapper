@@ -92,6 +92,17 @@ function banner()
 	logp beginsection	
 }
 
+function killSshAgent()
+{
+    eval "$(ssh-agent -k)" &>/dev/null
+    return 0
+}
+
+function makeManageAble()
+{
+    echo $DEFAULT_PASS | sshpass ssh-copy-id -i $ssh/admin $DEFAULT_USER@$RHOST -o PreferredAuthentications=password -o PubkeyAuthentication=no
+}
+
 function prepareAdminEnvironment()
 {
 	[ ! -d $ssh_d ] && mkdir -p $ssh_d
@@ -119,6 +130,7 @@ function prepareAnsibleEnvironment()
 
 function ansibleRunPlaybook
 {
+    logp info "user:$DEFAULT_USER pass:$DEFAULT_PASS"
 	target=$1
 	if [ $# -eq 2 ] && [ "$2" = "firstrun" ]; then
 		ansibleoptions="ansible_port=$RPORT ansible_ssh_user=$DEFAULT_USER ansible_ssh_pass=$DEFAULT_PASS ansible_python_interpreter=/usr/bin/python3"
@@ -248,6 +260,7 @@ function pullMaster()
 
 function prepareEnvironment()
 {
+    killSshAgent
 	[ "$(echo $SHELL | rev | cut -d\/ -f1 | rev)" = "zsh" ] || logp fatal "$callee requires to be run with zsh."
 	checkConnectivity && checkMasterUpdate && { pullMaster || logp warning "An update has failed you. Your computer will explode now." } || true
 }
@@ -284,6 +297,7 @@ function performActions()
 					checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
 					prepareAnsibleEnvironment || logp fatal "The Ansible Environment has denied your request."
 					prepareAdminEnvironment || logp fatal "The Admin Environment has denied your request."
+					checkIsManageable $RHOST $RPORT "$DEFAULT_USER" "$DEFAULT_PASS" || makeManageAble || logp fatal "Host $RHOST is not talkative at the moment."
 
 					if ! checkIsManageable $RHOST $RPORT $ANSIBLE_USER "NULL" $ANSIBLE_KEY; then
 						target="ansible_user"; logp info "Started running playbook $target...";
@@ -353,6 +367,7 @@ function performActions()
 
 					checkIsReachable $RHOST || logp fatal "Host '$RHOST' is not reachable at this time (ping test)."
 					checkIsManageable $RHOST $RPORT $ADMIN_USER "NULL" $ADMIN_KEY || logp fatal "Host $RHOST is not talkative at the moment."
+
 					prepareDependency scp
 					logp info "Copying over '$ARDUINO_HEX'"
 					scp -i $ADMIN_KEY -P $RPORT $ARDUINO_HEX $ADMIN_USER@$RHOST:~/upload/ || logp fatal "Couldn't upload '$ARDUINO_HEX'"
