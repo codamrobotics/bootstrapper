@@ -20,7 +20,7 @@ function checkIsReachable()
 	esac
 }
 
-function checkIsManageable()
+function checkIsManageable() # RHOST RPORT USER PASS KEY
 {
 	if [ $# -eq 5 ]; then
 		ssh -p $2 -i $5 -o PreferredAuthentications=publickey $3@$1 exit &>/dev/null
